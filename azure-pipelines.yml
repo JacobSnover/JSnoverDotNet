@@ -39,10 +39,10 @@ steps:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
-- task: AzureWebApp@1
+- task: AzureRmWebAppDeployment@4
   inputs:
+    ConnectionType: 'AzureRM'
     azureSubscription: '$(azureSubscription)'
     appType: 'webApp'
-    appName: 'JsnoverDotNetBlazor'
-    package: '$(build.artifactStagingDirectory)\WebApp.zip'
-    deploymentMethod: 'auto'
+    WebAppName: 'JsnoverDotNetBlazor'
+    packageForLinux: '$(build.artifactStagingDirectory)\WebApp.zip'
