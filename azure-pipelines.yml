@@ -44,5 +44,5 @@ steps:
     azureSubscription: '$(azureSubscription)'
     appType: 'webApp'
     appName: 'JsnoverDotNetBlazor'
-    package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+    package: '$(build.artifactStagingDirectory)\WebApp.zip'
     deploymentMethod: 'auto'
