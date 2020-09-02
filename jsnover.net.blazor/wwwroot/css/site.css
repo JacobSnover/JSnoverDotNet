@@ -254,3 +254,14 @@ button {
     button:focus {
         outline: 0;
     }
+
+.jsno-background {
+    background-color: rgba(127, 140, 199, 1);
+    border: solid;
+    border-color: burlywood;
+    border-bottom-width: 4px;
+}
+
+.jsno-pad {
+    padding: 25px 0px 25px 25px;
+}
