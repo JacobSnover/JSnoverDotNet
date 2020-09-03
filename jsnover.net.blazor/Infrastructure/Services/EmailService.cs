@@ -57,7 +57,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
                 }
 
 
-                await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+                await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.Auto);
                 await smtp.AuthenticateAsync(email, password);
                 await smtp.SendAsync(messageToSend);
                 await smtp.DisconnectAsync(true);
