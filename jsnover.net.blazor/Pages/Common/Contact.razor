@@ -1,5 +1,6 @@
 ﻿@page "/contact"
-
+@using Microsoft.Extensions.Logging
+@inject ILogger<jsnover.net.blazor.DataTransferObjects.Common.ContactModel> log
 
 
 <div class="jsno-pad">
@@ -64,8 +65,6 @@
     private string saving = string.Empty;
     private bool isIssue = false;
     private string issue = "Issue";
-    private bool isBusiness = false;
-    private string business = "Business";
 
 
     protected override void OnInitialized()
@@ -79,7 +78,7 @@
 
         if (isValid)
         {
-            saving = "Saving . . .";
+            //saving = "Saving . . .";
             contactRequest.Issue = isIssue;
             var uploaded = await Infrastructure.Services.Submit.SubmitContactRequest(contactRequest);
             if (uploaded)
@@ -87,14 +86,15 @@
                 saving = string.Empty;
                 contactRequest = new DataTransferObjects.Common.ContactModel();
                 uploadError = string.Empty;
-                uploadSuccess = "It has been saved! Thank you for reaching out to us";
+                //uploadSuccess = "It has been saved! Thank you for reaching out to us";
                 this.StateHasChanged();
             }
             else
             {
+                log.LogError("There was an ERROR when saving contact request");
                 saving = string.Empty;
                 uploadSuccess = string.Empty;
-                uploadError = "There was an ERROR when saving, if problem continues please try again later. We greatly apologize and truly appreciate your time today";
+                //uploadError = "There was an ERROR when saving, if problem continues please try again later. We greatly apologize and truly appreciate your time today";
                 this.StateHasChanged();
             }
 
