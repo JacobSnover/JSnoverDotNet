@@ -14,7 +14,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
         {
             var messageToSend = new MimeMessage
             {
-                Sender = new MailboxAddress("jsnover.net", "fourseasonflora@gmail.com"),
+                Sender = new MailboxAddress("jsnover", "jsnover.net"),
                 Subject = "jsnover.net New Contact Request",
             };
 
@@ -22,9 +22,9 @@ namespace jsnover.net.blazor.Infrastructure.Services
             {
                 Text =
                 $"<strong>NEW CONTACT REQUEST</strong><br/>" +
-                $"<strong>Name</strong>: {contactRequest.Name}" +
+                $"<strong>Name</strong>: {contactRequest.Name}<br/>" +
                 $"<strong>Email</strong>: {contactRequest.Email}<br/>" +
-                $"<strong>Request Body</strong>: {contactRequest.Body}" +
+                $"<strong>Request Body</strong>: {contactRequest.Body}<br/>" +
                 $"<strong>ISSUE WITH SITE</strong>: {contactRequest.Issue}<br/>"
             };
 
@@ -57,7 +57,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
                 }
 
 
-                await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.Auto);
+                await smtp.ConnectAsync("smtp.office365.com", 587, SecureSocketOptions.StartTls);
                 await smtp.AuthenticateAsync(email, password);
                 await smtp.SendAsync(messageToSend);
                 await smtp.DisconnectAsync(true);
