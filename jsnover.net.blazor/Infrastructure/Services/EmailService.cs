@@ -14,7 +14,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
         {
             var messageToSend = new MimeMessage
             {
-                Sender = new MailboxAddress("jsnover", "jsnover.net"),
+                Sender = new MailboxAddress("jsnover", "fourseasonflora@outlook.com"),
                 Subject = "jsnover.net New Contact Request",
             };
 

@@ -265,3 +265,11 @@ button {
 .jsno-pad {
     padding: 25px 0px 25px 25px;
 }
+
+.shadow-border {
+    box-shadow: 10px 10px 10px #3a0647, 10px 10px 30px #3a0647 inset;
+}
+
+.shadow-border-sm {
+    box-shadow: 4px 4px 4px #3a0647, 1px 1px 10px #3a0647 inset;
+}
