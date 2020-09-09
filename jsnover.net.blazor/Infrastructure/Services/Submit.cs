@@ -13,7 +13,15 @@ namespace jsnover.net.blazor.Infrastructure.Services
         {
             if (RegexUtilities.IsValidEmail(contactRequest.Email))
             {
-                await EmailService.NotifySnover(contactRequest);
+                try
+                {
+                    await EmailService.NotifySnover(contactRequest);
+                }
+                catch (Exception)
+                {
+
+                }
+                
                 return await JsnoRepo.SubmitContactRequest(ContactModel.MapToDto(contactRequest));
             }
             return false;

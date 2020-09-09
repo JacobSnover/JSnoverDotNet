@@ -21,7 +21,12 @@ namespace jsnover.net.blazor.DataTransferObjects.Common
         [StringLength(maximumLength: 500, ErrorMessage = "Please keep comment under 500 Characters")]
         public string Body { get; set; }
 
+        [StringLength(maximumLength: 50, ErrorMessage = "Must be under 100 characters")]
+        public string CompanyName { get; set; }
+
         public bool Issue { get; set; } = false;
+
+        public bool Business { get; set; } = false;
 
         public static ContactRequest MapToDto(ContactModel comment)
         {
@@ -32,7 +37,9 @@ namespace jsnover.net.blazor.DataTransferObjects.Common
                 Email = comment.Email,
                 UserName = comment.Name ?? null,
                 Body = comment.Body ?? string.Empty,
-                Issue = comment.Issue
+                CompanyName = comment.CompanyName,
+                Issue = comment.Issue,
+                Business = comment.Business
             };
         }
     }
