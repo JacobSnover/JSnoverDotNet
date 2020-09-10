@@ -262,8 +262,20 @@ button {
     border-bottom-width: 4px;
 }
 
-.jsno-pad {
+.pad-25x3 {
     padding: 25px 0px 25px 25px;
+}
+
+.pad-20 {
+    padding: 20px 10px 5px 20px;
+}
+
+.margin-bttm-20 {
+    margin-bottom: 20px;
+}
+
+.background-color-darkcyan {
+    background-color: darkcyan;
 }
 
 .shadow-border {
