@@ -3,6 +3,8 @@ using MailKit.Security;
 using Microsoft.Extensions.Configuration;
 using MimeKit;
 using MimeKit.Text;
+using SendGrid;
+using SendGrid.Helpers.Mail;
 using System;
 using System.Threading.Tasks;
 
@@ -12,56 +14,39 @@ namespace jsnover.net.blazor.Infrastructure.Services
     {        
         internal static async Task NotifySnover(ContactModel contactRequest)
         {
-            var messageToSend = new MimeMessage
+            var msg = new SendGridMessage()
             {
-                Sender = new MailboxAddress("jsnover", "fourseasonflora@outlook.com"),
+                From = new EmailAddress("jsnover@jsnover.net", "jsnover.net"),
                 Subject = "jsnover.net New Contact Request",
-            };
-
-            messageToSend.Body = new TextPart(TextFormat.Html)
-            {
-                Text =
+                PlainTextContent =
+                $"NEW CONTACT REQUEST - Name: {contactRequest.Name}, Email: {contactRequest.Email}, Request Body: {contactRequest.Body}, ISSUE WITH SITE: {contactRequest.Issue}",
+                HtmlContent =
                 $"<strong>NEW CONTACT REQUEST</strong><br/>" +
                 $"<strong>Name</strong>: {contactRequest.Name}<br/>" +
                 $"<strong>Email</strong>: {contactRequest.Email}<br/>" +
                 $"<strong>Request Body</strong>: {contactRequest.Body}<br/>" +
                 $"<strong>ISSUE WITH SITE</strong>: {contactRequest.Issue}<br/>"
             };
-
-            messageToSend.To.Add(new MailboxAddress("Randy", "snoverjacob@yahoo.com"));
-
-            await SendEmail(messageToSend);
+            msg.AddTo(new EmailAddress("snoverjacob@yahoo.com", "Randy"));
+            await SendEmail(msg);
         }
 
-        private static async Task SendEmail(MimeMessage messageToSend)
+        private static async Task SendEmail(SendGridMessage msg)
         {
-            using (var smtp = new MailKit.Net.Smtp.SmtpClient())
-            {
-                smtp.MessageSent += (sender, args) => { };
-                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
-
-                var builder = new ConfigurationBuilder()
+            var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: false)
                 .Build();
 
-                var email = Environment.GetEnvironmentVariable("Flora:Email", EnvironmentVariableTarget.Process);
-                var password = Environment.GetEnvironmentVariable("Flora:Password", EnvironmentVariableTarget.Process);
+            var apiKey = Environment.GetEnvironmentVariable("SendGrid:ApiKey");
 
-                if (email is null)
-                {
-                    email = builder.GetValue<string>("Flora:Email");
-                }
-                if (password is null)
-                {
-                    password = builder.GetValue<string>("Flora:Password");
-                }
-
-
-                await smtp.ConnectAsync("smtp.office365.com", 587, SecureSocketOptions.StartTls);
-                await smtp.AuthenticateAsync(email, password);
-                await smtp.SendAsync(messageToSend);
-                await smtp.DisconnectAsync(true);
+            if (apiKey is null)
+            {
+                apiKey = builder.GetValue<string>("SendGrid:ApiKey");
             }
+
+            var client = new SendGridClient(apiKey);
+            
+            var response = await client.SendEmailAsync(msg);
         }
     }
 }
