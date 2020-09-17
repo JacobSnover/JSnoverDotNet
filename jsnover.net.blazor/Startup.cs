@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using jsnover.net.blazor.Areas.Identity;
 using jsnover.net.blazor.Data;
+using jsnover.net.blazor.Infrastructure.Services;
 
 namespace jsnover.net.blazor
 {
@@ -39,6 +40,7 @@ namespace jsnover.net.blazor
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
+            services.AddScoped<Submit>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

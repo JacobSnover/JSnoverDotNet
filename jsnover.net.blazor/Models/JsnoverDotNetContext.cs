@@ -37,7 +37,7 @@ namespace jsnover.net.blazor.Models
                 var connectionString = configuration.GetConnectionString("DefaultConnection").ToString();
                 if (!optionsBuilder.IsConfigured)
                 {
-                    optionsBuilder.UseSqlServer(connectionString, options => options.EnableRetryOnFailure());
+                    optionsBuilder.UseSqlServer(connectionString);
                 }
             }
         }
