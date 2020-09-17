@@ -1,16 +1,18 @@
 {
   "dependencies": {
-    "mssql1": {
-      "type": "mssql.local",
-      "connectionId": "DefaultConnection"
-    },
-    "secrets1": {
-      "type": "secrets.user"
-    },
     "signalr1": {
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('resourceGroupName')]/providers/Microsoft.SignalRService/SignalR/jsnover-net-blazorservice",
       "type": "signalr.azure",
       "connectionId": "Azure__SignalR__ConnectionString",
+      "secretStore": "LocalSecretsFile"
+    },
+    "secrets1": {
+      "type": "secrets.user"
+    },
+    "mssql1": {
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/jsnover-dot-net/databases/JsnoverDotNet",
+      "type": "mssql.azure",
+      "connectionId": "DefaultConnection",
       "secretStore": "LocalSecretsFile"
     }
   }

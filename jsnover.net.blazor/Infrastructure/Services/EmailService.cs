@@ -46,7 +46,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
 
             var client = new SendGridClient(apiKey);
             
-            var response = await client.SendEmailAsync(msg);
+            await client.SendEmailAsync(msg);
         }
     }
 }
