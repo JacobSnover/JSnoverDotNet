@@ -1,8 +1,5 @@
 ﻿using jsnover.net.blazor.DataTransferObjects.Common;
-using MailKit.Security;
 using Microsoft.Extensions.Configuration;
-using MimeKit;
-using MimeKit.Text;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 using System;

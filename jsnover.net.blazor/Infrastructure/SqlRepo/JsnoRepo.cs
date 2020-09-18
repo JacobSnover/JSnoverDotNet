@@ -1,7 +1,5 @@
 ﻿using jsnover.net.blazor.Models;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace jsnover.net.blazor.Infrastructure.SqlRepo
@@ -12,7 +10,7 @@ namespace jsnover.net.blazor.Infrastructure.SqlRepo
         {
             try
             {
-                using var db = new JsnoverDotNetContext();
+                using var db = new jsnoverdotnetdbContext();
                 db.ContactRequest.Add(contactRequest);
                 await db.SaveChangesAsync();
                 return true;
