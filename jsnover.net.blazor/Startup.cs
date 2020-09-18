@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using jsnover.net.blazor.Areas.Identity;
 using jsnover.net.blazor.Data;
 using jsnover.net.blazor.Infrastructure.Services;
+using jsnover.net.blazor.Models;
 
 namespace jsnover.net.blazor
 {
@@ -35,12 +36,14 @@ namespace jsnover.net.blazor
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
+            services.AddDbContext<jsnoverdotnetdbContext>(options =>
+                options.UseSqlServer(
+                    Configuration.GetConnectionString("DefaultConnection")));
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
-            services.AddScoped<Submit>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
