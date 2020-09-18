@@ -32,6 +32,12 @@ namespace jsnover.net.blazor.Models
                 var builder = new ConfigurationBuilder();
                 builder.AddJsonFile("appsettings.json", optional: false);
 
+                var build = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false)
+                .Build();
+
+                var test = build.GetValue<string>("ConnectionStrings:DefaultConnection");
+
                 var configuration = builder.Build();
 
                 var connectionString = configuration.GetConnectionString("DefaultConnection").ToString();
