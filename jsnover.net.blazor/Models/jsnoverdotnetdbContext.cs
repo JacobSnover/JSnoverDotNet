@@ -34,7 +34,7 @@ namespace jsnover.net.blazor.Models
 
                 var configuration = builder.Build();
 
-                var connectionString = configuration.GetConnectionString("DefaultConnection").ToString();
+                var connectionString = configuration.GetConnectionString("jsnoverdotnetdbConnection").ToString();
                 if (!optionsBuilder.IsConfigured)
                 {
                     optionsBuilder.UseSqlServer(connectionString);
