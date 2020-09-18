@@ -29,10 +29,26 @@ namespace jsnover.net.blazor.Models
         {
             if (!optionsBuilder.IsConfigured)
             {
-                var password = Environment.GetEnvironmentVariable("password");
+                var builder = new ConfigurationBuilder();
+                builder.AddJsonFile("appsettings.json", optional: false);
+
+                var build = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false)
+                .Build();
+
+                var password = build.GetValue<string>("password");
+
+                var configuration = builder.Build();
+
+                var apiKey1 = Environment.GetEnvironmentVariable("ConnectionStrings:DefaultConnection");
+
+                var apiKey2 = Environment.GetEnvironmentVariable("DefaultConnection");
+
+                var config = configuration.GetConnectionString("DefaultConnection").ToString();
                 if (!optionsBuilder.IsConfigured)
                 {
                     optionsBuilder.UseSqlServer($"Server=tcp:jsnoverdotnetserver.database.windows.net,1433;Initial Catalog=jsnoverdotnetdb;Persist Security Info=False;User ID=jsnover;Password={password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;");
+
                 }
             }
         }
