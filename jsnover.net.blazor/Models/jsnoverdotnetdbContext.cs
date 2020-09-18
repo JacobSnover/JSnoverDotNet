@@ -40,6 +40,10 @@ namespace jsnover.net.blazor.Models
 
                 var configuration = builder.Build();
 
+                var apiKey1 = Environment.GetEnvironmentVariable("ConnectionStrings:DefaultConnection");
+
+                var apiKey2 = Environment.GetEnvironmentVariable("DefaultConnection");
+
                 var connectionString = configuration.GetConnectionString("DefaultConnection").ToString();
                 if (!optionsBuilder.IsConfigured)
                 {
