@@ -89,26 +89,26 @@
 
         if (isValid)
         {
-            //saving = "Saving . . .";
+            saving = "Saving . . .";
             contactRequest.Issue = isIssue;
             contactRequest.Business = isBusiness;
             var uploaded = await Infrastructure.Services.Submit.SubmitContactRequest(contactRequest);
-            //if (uploaded)
-            //{
-            //    saving = string.Empty;
-            //    contactRequest = new DataTransferObjects.Common.ContactModel();
-            //    uploadError = string.Empty;
-            //    uploadSuccess = "It has been saved! Thank you for reaching out to us";
-            //    this.StateHasChanged();
-            //}
-            //else
-            //{
-            //    log.LogError("There was an ERROR when saving contact request");
-            //    saving = string.Empty;
-            //    uploadSuccess = string.Empty;
-            //    uploadError = "There was an ERROR when saving, if problem continues please try again later. We greatly apologize and truly appreciate your time today";
-            //    this.StateHasChanged();
-            //}
+            if (uploaded)
+            {
+                saving = string.Empty;
+                contactRequest = new DataTransferObjects.Common.ContactModel();
+                uploadError = string.Empty;
+                uploadSuccess = "It has been saved! Thank you for reaching out to us";
+                this.StateHasChanged();
+            }
+            else
+            {
+                log.LogError("There was an ERROR when saving contact request");
+                saving = string.Empty;
+                uploadSuccess = string.Empty;
+                uploadError = "There was an ERROR when saving, if problem continues please try again later. We greatly apologize and truly appreciate your time today";
+                this.StateHasChanged();
+            }
 
         }
     }
