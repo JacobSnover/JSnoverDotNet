@@ -17,6 +17,7 @@ using jsnover.net.blazor.Areas.Identity;
 using jsnover.net.blazor.Data;
 using jsnover.net.blazor.Infrastructure.Services;
 using jsnover.net.blazor.Models;
+using jsnover.net.blazor.DataTransferObjects.Common;
 
 namespace jsnover.net.blazor
 {
@@ -36,9 +37,7 @@ namespace jsnover.net.blazor
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
-            services.AddDbContext<jsnoverdotnetdbContext>(options =>
-                options.UseSqlServer(
-                    Configuration.GetConnectionString("DefaultConnection")));
+            ContextOptions.connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddRazorPages();
