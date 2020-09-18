@@ -5,13 +5,13 @@ using Microsoft.Extensions.Configuration;
 
 namespace jsnover.net.blazor.Models
 {
-    public partial class JsnoverDotNetContext : DbContext
+    public partial class jsnoverdotnetdbContext : DbContext
     {
-        public JsnoverDotNetContext()
+        public jsnoverdotnetdbContext()
         {
         }
 
-        public JsnoverDotNetContext(DbContextOptions<JsnoverDotNetContext> options)
+        public jsnoverdotnetdbContext(DbContextOptions<jsnoverdotnetdbContext> options)
             : base(options)
         {
         }
@@ -148,7 +148,9 @@ namespace jsnover.net.blazor.Models
                     .IsRequired()
                     .HasMaxLength(500);
 
-                entity.Property(e => e.CompanyName).HasMaxLength(100);
+                entity.Property(e => e.CompanyName)
+                    .HasMaxLength(100)
+                    .IsFixedLength();
 
                 entity.Property(e => e.DatePosted).HasColumnType("date");
 
