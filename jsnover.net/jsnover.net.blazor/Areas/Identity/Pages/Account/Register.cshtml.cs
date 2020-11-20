@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using jsnover.net.blazor.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -45,6 +46,10 @@ namespace jsnover.net.blazor.Areas.Identity.Pages.Account
         public class InputModel
         {
             [Required]
+            [Display(Name = "UserName")]
+            public string UserName { get; set; }
+
+            [Required]
             [EmailAddress]
             [Display(Name = "Email")]
             public string Email { get; set; }
@@ -78,6 +83,17 @@ namespace jsnover.net.blazor.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation($"{Input.Email} has been registered.");
+                    try
+                    {
+                        var db = new jsnoverdotnetdbContext();
+                        db.Owners.Add(new Owners { Alias = Input.UserName, Email = Input.Email });
+                        db.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex.Message);
+                        throw;
+                    }
 
                     _logger.LogInformation("User created a new account with password.");
 

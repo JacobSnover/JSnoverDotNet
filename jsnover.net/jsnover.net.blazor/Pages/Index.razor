@@ -1,4 +1,6 @@
 ﻿@page "/"
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject jsnover.net.blazor.Infrastructure.Services.ToolService ToolService
 
 <div class="jumbotron translucent-text-box shadow-border jsno-pad-20 background-color-darkcyan">
     <h1>JSNOVER.NET</h1>
@@ -19,9 +21,9 @@
             <h2>As an Engineer</h2>
             <p>
                 I have been learning as much as I can about Computer Science. First taking a .NET C# boot camp in Detroit, MI.
-                After that I moved into a TA position at the boot camp where I studied. I have been working on open source projects, as well as personal projects, 
-                so that I can keep pushing the limits of my knowledge. I have a full time position as a software engineer at Jato Dynamics in Detroit, 
-                while also returning in the last to instruct a .NET CORE bootcamp at Grand Circus in the evenings, 
+                After that I moved into a TA position at the boot camp where I studied. I have been working on open source projects, as well as personal projects,
+                so that I can keep pushing the limits of my knowledge. I have a full time position as a software engineer at Jato Dynamics in Detroit,
+                while also returning in the last to instruct a .NET CORE bootcamp at Grand Circus in the evenings,
                 and run multiple projects in my free time as well. Reach out for consultation or a possible business oppurtunity.
             </p>
         </div>
@@ -50,3 +52,26 @@
         </div>
     </div>
 </div>
+
+@code{ 
+    private bool visit;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        visit = await sessionStorage.GetItemAsync<bool>("countedVisit");
+        if(firstRender)
+        {
+
+        }
+        else
+        {
+            visit = await sessionStorage.GetItemAsync<bool>("countedVisit");
+        }
+
+        if(!visit)
+        {
+            await sessionStorage.SetItemAsync("countedVisit", true);
+            await ToolService.CountVisitor();
+        }
+    }
+}

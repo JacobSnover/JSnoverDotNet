@@ -41,9 +41,11 @@ namespace jsnover.net.blazor
             ContextOptions.connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
+            services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
+            services.AddScoped<ToolService>();
             services.AddBlazoredSessionStorage();
         }
 
@@ -53,7 +55,7 @@ namespace jsnover.net.blazor
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
+                app.UseMigrationsEndPoint();
             }
             else
             {
