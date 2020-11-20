@@ -18,6 +18,7 @@ using jsnover.net.blazor.Data;
 using jsnover.net.blazor.Infrastructure.Services;
 using jsnover.net.blazor.Models;
 using jsnover.net.blazor.DataTransferObjects.Common;
+using Blazored.SessionStorage;
 
 namespace jsnover.net.blazor
 {
@@ -43,6 +44,7 @@ namespace jsnover.net.blazor
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
+            services.AddBlazoredSessionStorage();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
