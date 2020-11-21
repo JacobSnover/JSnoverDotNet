@@ -1,4 +1,5 @@
-﻿using jsnover.net.blazor.DataTransferObjects.Common;
+﻿using jsnover.net.blazor.DataTransferObjects.BlogModels;
+using jsnover.net.blazor.DataTransferObjects.Common;
 using Microsoft.Extensions.Configuration;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -9,6 +10,47 @@ namespace jsnover.net.blazor.Infrastructure.Services
 {
     public class EmailService
     {        
+        /// <summary>
+        /// Notify Flora about new comment on blog
+        /// </summary>
+        /// <param name="comment"></param>
+        /// <param name="blog"></param>
+        internal static async Task NotifySnover(BlogCommentModel comment, BlogDisplayModel blog)
+        {
+            var msg = new SendGridMessage()
+            {
+                From = new EmailAddress("jsnover@jsnover.net", "jsnover.net"),
+                Subject = "New Contact Request jsnover.net",
+                PlainTextContent =
+               $"New Comment on Blog: {blog.Title}, Name: {comment.Name}, Email: {comment.Email}, " +
+               $"Subscribe: {comment.Subscribe}, Liked: {comment.Liked}, Comment: {comment.Body}",
+                HtmlContent =
+               $"<strong>New Comment on Blog</strong>: {blog.Title}<br/>" +
+                $"<strong>Name</strong>: {comment.Name}<br/>" +
+                $"<strong>Email</strong>: {comment.Email}<br/>" +
+                $"<strong>Subscribe</strong>: {comment.Subscribe}<br/>" +
+                $"<strong>Liked</strong>: {comment.Liked}<br/>" +
+                $"<strong>Comment</strong>: {comment.Body}"
+            };
+            msg.AddTo(new EmailAddress("snoverjacob@yahoo.com", "Randy"));
+            await SendEmail(msg);
+        }
+
+        internal static async Task NotifySnover(string subscriberEmail)
+        {
+            var msg = new SendGridMessage()
+            {
+                From = new EmailAddress("jsnover@jsnover.net", "jsnover.net"),
+                Subject = "New Subscriber jsnover.net",
+                PlainTextContent =
+                $"New Subscriber: {subscriberEmail}",
+                HtmlContent =
+                $"<strong>New Subscriber</strong>: {subscriberEmail}<br/>"
+            };
+            msg.AddTo(new EmailAddress("snoverjacob@yahoo.com", "Randy"));
+            await SendEmail(msg);
+        }
+
         internal static async Task NotifySnover(ContactModel contactRequest)
         {
             var msg = new SendGridMessage()

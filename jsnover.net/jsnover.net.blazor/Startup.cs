@@ -19,6 +19,7 @@ using jsnover.net.blazor.Infrastructure.Services;
 using jsnover.net.blazor.Models;
 using jsnover.net.blazor.DataTransferObjects.Common;
 using Blazored.SessionStorage;
+using jsnover.net.blazor.DataTransferObjects.BlogModels;
 
 namespace jsnover.net.blazor
 {
@@ -46,6 +47,9 @@ namespace jsnover.net.blazor
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
             services.AddScoped<ToolService>();
+            services.AddSingleton<BlogListModel>();
+            services.AddScoped<BlogService>();
+            services.AddScoped<BlogViewModel>();
             services.AddBlazoredSessionStorage();
         }
 

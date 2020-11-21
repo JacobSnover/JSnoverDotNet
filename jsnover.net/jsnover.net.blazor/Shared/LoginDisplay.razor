@@ -1,19 +1,15 @@
 ﻿
-<ul class="nav flex-column">
-    <AuthorizeView>
-        <Authorized>
-            <li class="nav-item px-3">
-                <NavLink class="nav-link" href="Identity/Account/Manage" Match="NavLinkMatch.All">
-                    <span class="oi oi-cog" aria-hidden="true"></span> Manage
-                </NavLink>
-            </li>
-            <li class="nav-item px-3">
-                <NavLink class="nav-link" href="Identity/Account/LogOut" Match="NavLinkMatch.All">
-                    <span class="oi oi-account-logout" aria-hidden="true"></span> Log Out
-                </NavLink>
-            </li>
-        </Authorized>
-        <NotAuthorized>
-        </NotAuthorized>
-    </AuthorizeView>
-</ul>
+<AuthorizeView>
+    <Authorized>
+        <a class="aLink" href="Identity/Account/Manage">Hello, you are logged in!</a>
+        <a class="aLink btn btn-success shadow-border-sm" href="/writeblog">Write A New Blog?</a>
+        <form method="post" action="Identity/Account/LogOut">
+            <button type="submit" class="nav-link btn btn-link aLink shadow-border-sm">Log out</button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Login">
+            <img src="../images/JacobSnoverLogoOutlineBlackRedWBackground.jpg" width="50" height="50" class="shadow-border-sm rounded-circle"/>
+        </a>
+    </NotAuthorized>
+</AuthorizeView>

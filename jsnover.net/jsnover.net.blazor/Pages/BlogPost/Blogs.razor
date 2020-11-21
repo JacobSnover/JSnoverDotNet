@@ -1,0 +1,181 @@
+﻿@page "/Blogs"
+@page "/Blogs/{type}/{parameter}"
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+@inject NavigationManager nav
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject Infrastructure.Services.BlogService BlogService
+
+<h3><strong>Blogs</strong></h3>
+
+<div>
+    <table class="table-bordered table-responsive-lg blog-background rounded-lg shadow-border-sm">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col" class="p-3 pl-3 text-center">Title</th>
+                <th scope="col" class="p-3 pl-3 text-center">Topic</th>
+                <th scope="col" class="p-3 pl-3 text-center">Tags</th>
+                <th scope="col" class="p-3 pl-3 text-center">Submit Date</th>
+                <th scope="col" class="p-3 pl-3 text-center">Action</th>
+                <AuthorizeView>
+                    <Authorized>
+                        <th scope="col" class="p-3 pl-3 text-center">Likes</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Views</th>
+                    </Authorized>
+                </AuthorizeView>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var blog in BlogModels?.BlogDisplayModels ?? new List<DataTransferObjects.BlogModels.BlogDisplayModel>())
+            {
+                if ((bool)blog.Published)
+                {
+                    <tr>
+                        <td class="pr-3 pl-3">@blog.Title</td>
+                        <td class="pr-3 pl-3">@blog.Topic</td>
+                        <td class="pr-3 pl-3">
+                            @foreach (var tag in blog.Tags)
+                            {
+                                <span>@tag.Name,</span> <br />
+                            }
+                        </td>
+                        <td class="p-3 pl-3">@blog.SubmitDate.ToShortDateString()</td>
+
+                        <AuthorizeView>
+                            <Authorized>
+                                <td class="p-3 pl-3">
+                                    @{
+                                        var id = blog.BlogId;
+                                        <button @onclick="@(e => ViewBlog(id))" class="btn btn-success oi oi-eye shadow-border-sm"><h6>View</h6></button>
+
+                                        <button @onclick="@(e => EditBlog(id))" class="btn btn-primary oi oi-pencil shadow-border-sm"><h6>Edit</h6></button>
+                                    }
+                                </td>
+
+                                <td class="pr-3 pl-3">
+                                    @blog.Likes
+                                </td>
+                                <td class="pr-3 pl-3">
+                                    @blog.Views
+                                </td>
+                            </Authorized>
+                            <NotAuthorized>
+                                <td class="p-3">
+                                    @{
+                                        var id = blog.BlogId;
+                                        <button @onclick="@(e => ViewBlog(id))" class="btn btn-success oi oi-eye shadow-border-sm"><h6>View</h6></button>
+                                    }
+                                </td>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<AuthorizeView>
+    <Authorized>
+        <h3><strong>Un-Published Blogs</strong></h3>
+        <div>
+            <table class="table-bordered table-responsive-lg blog-background rounded-lg">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col" class="p-3 pl-3 text-center">Title</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Topic</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Tags</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Submit Date</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Action</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Likes</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Views</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var blog in BlogModels.BlogDisplayModels ?? new List<DataTransferObjects.BlogModels.BlogDisplayModel>())
+                    {
+                        if (!(bool)blog.Published)
+                        {
+                            <tr>
+                                <td class="pr-3 pl-3">@blog.Title</td>
+                                <td class="pr-3 pl-3">@blog.Topic</td>
+                                <td class="pr-3 pl-3">
+                                    @foreach (var tag in blog.Tags)
+                                    {
+                                        <span><strong>@tag.Name,</strong> <br /></span>
+                                    }
+                                </td>
+                                <td class="p-3 pl-3">@blog.SubmitDate.ToShortDateString()</td>
+                                <td class="p-3 pl-3">
+                                    @{
+                                        var id = blog.BlogId;
+                                        <button @onclick="@(e => ViewBlog(id))" class="btn btn-success oi oi-eye"><h6>View</h6></button>
+
+                                        <button @onclick="@(e => EditBlog(id))" class="btn btn-primary oi oi-pencil"><h6>Edit</h6></button>
+                                    }
+                                </td>
+
+                                <td class="pr-3 pl-3">
+                                    @blog.Likes
+                                </td>
+                                <td class="pr-3 pl-3">
+                                    @blog.Views
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+<jsnover.net.blazor.Components.Footer />
+
+@code {
+    [Parameter]
+    public string type { get; set; }
+
+    [Parameter]
+    public string parameter { get; set; }
+
+    private DataTransferObjects.BlogModels.BlogListModel BlogModels = new DataTransferObjects.BlogModels.BlogListModel();
+
+    protected override async void OnInitialized()
+    {
+        if (!SearchIsNull() && BlogModels?.BlogDisplayModels is null)
+        {
+            BlogModels.BlogDisplayModels = DataTransferObjects.BlogModels.BlogDisplayModel
+                    .MapToList(await BlogService.SearchBlogs(type, parameter));
+        }
+    }
+
+    private bool SearchIsNull()
+    {
+        return (type is null) || (parameter is null);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (SearchIsNull())
+            {
+                BlogModels.BlogDisplayModels = await BlogService.GetBlogs();
+            }
+            BlogModels.BlogDisplayModels = BlogModels.BlogDisplayModels.OrderByDescending(order => order.SubmitDate).ToList();
+            this.StateHasChanged();
+        }
+    }
+
+    private void EditBlog(int id)
+    {
+        nav.NavigateTo($"EditBlog/{id}");
+    }
+
+    private void ViewBlog(int id)
+    {
+        nav.NavigateTo($"blogview/{id}");
+    }
+}
