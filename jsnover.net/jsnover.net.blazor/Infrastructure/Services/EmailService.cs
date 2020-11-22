@@ -11,7 +11,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
     public class EmailService
     {        
         /// <summary>
-        /// Notify Flora about new comment on blog
+        /// Notify Snover about new comment on blog
         /// </summary>
         /// <param name="comment"></param>
         /// <param name="blog"></param>

@@ -189,7 +189,6 @@ app {
     margin-left: 50px;
 }
 
-
 .homePTag {
     background-color: slategray;
     padding: 5px;
@@ -256,7 +255,7 @@ button {
     }
 
 .jsno-background {
-    background-color: rgba(127, 140, 199, 1);
+    background-color: rgba(127, 140, 199, 0.8);
     border: solid;
     border-color: burlywood;
     border-bottom-width: 4px;
@@ -284,4 +283,87 @@ button {
 
 .shadow-border-sm {
     box-shadow: 4px 4px 4px #3a0647, 1px 1px 10px #3a0647 inset;
+}
+
+.shadow-border-xs {
+    box-shadow: 4px 4px 4px #3a0647, 1px 1px 10px #3a0647 inset;
+}
+
+.blog-background {
+    background-color: rgba(127, 140, 199, 0.8);
+    border: solid;
+    border-color: rgb(149, 7, 192);
+    border-bottom-width: 4px;
+}
+
+.blog-pad {
+    padding: 25px 0px 25px 25px;
+}
+
+.blogHeader {
+    background-color: rgb(67, 173, 223);
+    text-decoration-color: rgb(238, 210, 241);
+    text-align: center;
+    display: block;
+    font-size: x-large;
+    margin-top: .5em;
+    margin-bottom: .5em;
+    margin-left: 0;
+    margin-right: 0;
+    font-weight: bold;
+}
+
+.blogData {
+    display: block;
+    font-size: medium;
+    margin-top: .5em;
+    margin-bottom: .5em;
+    margin-left: 0;
+    margin-right: 0;
+    font-weight: bold;
+    color: white;
+}
+
+.blogTitle {
+    color: black;
+    display: block;
+    font-size: 2em;
+    margin-top: 0.67em;
+    margin-bottom: 0.67em;
+    margin-left: 0;
+    margin-right: 0;
+    font-weight: bold;
+}
+
+a.blogLink:hover {
+    color: rgb(115, 25, 151);
+}
+
+.preBlogBody {
+    font-family: Arial;
+    font-size: 1rem;
+    word-wrap: break-word;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+}
+
+.peeBlogBody {
+    background-color: azure;
+    overflow: scroll;
+    height: 250px;
+}
+
+.buttonLink {
+    background: none !important;
+    border: none;
+    padding: 0 !important;
+    /*optional*/
+    font-family: arial, sans-serif;
+    /*input has OS specific font-family*/
+    color: #069;
+    text-decoration: underline;
+    cursor: pointer;
 }
