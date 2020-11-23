@@ -182,7 +182,12 @@ app {
 }
 
 .background-image {
-    background-image: url('../images/jsdotnetbackgroundpng.png');
+    background-image: url('../images/Untitled.png'), linear-gradient(150deg, #3a0647 20%, rgb(5, 39, 103) 100%);
+    border-radius: 50px, 1px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
 }
 
 .contact {
