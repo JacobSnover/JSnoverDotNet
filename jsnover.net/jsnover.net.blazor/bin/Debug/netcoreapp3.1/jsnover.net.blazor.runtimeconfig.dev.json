@@ -1,0 +1,8 @@
+{
+  "runtimeOptions": {
+    "additionalProbingPaths": [
+      "C:\\Users\\snove\\.dotnet\\store\\|arch|\\|tfm|",
+      "C:\\Users\\snove\\.nuget\\packages"
+    ]
+  }
+}

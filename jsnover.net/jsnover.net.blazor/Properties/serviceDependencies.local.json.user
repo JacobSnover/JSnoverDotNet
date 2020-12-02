@@ -1,0 +1,39 @@
+{
+  "dependencies": {
+    "signalr1": {
+      "restored": true,
+      "restoreTime": "2020-11-20T00:55:57.6608173Z"
+    },
+    "mssql1": {
+      "restored": false,
+      "restoreTime": "0001-01-01T00:00:00"
+    }
+  },
+  "parameters": {
+    "signalr1.resourceGroupName": {
+      "Name": "signalr1.resourceGroupName",
+      "Type": "resourceGroup",
+      "Value": "JsnoverDotNet"
+    },
+    "mssql1.resourceGroupLocation": {
+      "Name": "mssql1.resourceGroupLocation",
+      "Type": "location",
+      "Value": "eastus"
+    },
+    "signalr1.resourceGroupLocation": {
+      "Name": "signalr1.resourceGroupLocation",
+      "Type": "location",
+      "Value": "eastus"
+    },
+    "mssql1.resourceGroupName": {
+      "Name": "mssql1.resourceGroupName",
+      "Type": "resourceGroup",
+      "Value": "JsnoverDotNet"
+    },
+    "subscriptionId": {
+      "Name": "subscriptionId",
+      "Type": "subscription",
+      "Value": "78c269a9-2a55-4b77-8ca0-801aba65cc11"
+    }
+  }
+}
