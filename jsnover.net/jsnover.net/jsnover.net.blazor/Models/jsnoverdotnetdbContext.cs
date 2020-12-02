@@ -65,7 +65,7 @@ namespace jsnover.net.blazor.Models
             modelBuilder.Entity<AspNetRoles>(entity =>
             {
                 entity.HasIndex(e => e.NormalizedName)
-                    .HasDatabaseName("RoleNameIndex")
+                    .HasName("RoleNameIndex")
                     .IsUnique()
                     .HasFilter("([NormalizedName] IS NOT NULL)");
 
@@ -133,10 +133,10 @@ namespace jsnover.net.blazor.Models
             modelBuilder.Entity<AspNetUsers>(entity =>
             {
                 entity.HasIndex(e => e.NormalizedEmail)
-                    .HasDatabaseName("EmailIndex");
+                    .HasName("EmailIndex");
 
                 entity.HasIndex(e => e.NormalizedUserName)
-                    .HasDatabaseName("UserNameIndex")
+                    .HasName("UserNameIndex")
                     .IsUnique()
                     .HasFilter("([NormalizedUserName] IS NOT NULL)");
 
