@@ -1,0 +1,15 @@
+﻿
+<AuthorizeView>
+    <Authorized>
+        <a class="aLink" href="Identity/Account/Manage">Hello, you are logged in!</a>
+        <a class="aLink btn btn-success shadow-border-sm" href="/writeblog">Write A New Blog?</a>
+        <form method="post" action="Identity/Account/LogOut">
+            <button type="submit" class="nav-link btn btn-link aLink shadow-border-sm">Log out</button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Login">
+            <img src="../images/JacobSnoverLogoOutlineBlackRedWBackground.png" width="50" height="50" class="shadow-border-sm rounded-circle"/>
+        </a>
+    </NotAuthorized>
+</AuthorizeView>

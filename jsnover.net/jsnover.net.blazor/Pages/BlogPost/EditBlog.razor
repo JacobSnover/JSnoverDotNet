@@ -1,0 +1,222 @@
+﻿@page "/EditBlog/{Id:int}"
+@using jsnover.net.blazor.DataTransferObjects.BlogModels
+@using Infrastructure.Services 
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<h3>EditBlog</h3>
+
+<h1 class="text-danger">@uploadError</h1>
+
+<div class="container rounded">
+
+    <h3 class="font-weight-bold text-white">Let's Edit This Blog &#128578</h3>
+
+    <EditForm Model="@editModel" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <div>
+            <div class="form-group">
+                <label for="topic" class="text-light">Topic</label><ValidationMessage For="@(() => editModel.Blog.Topic)" />
+                <InputText class="form-control translucent-text-box shadow-border-xs" id="topic" @bind-Value="editModel.Blog.Topic" />
+            </div>
+            <div class="form-group">
+                <label for="title" class="text-light">Title</label><ValidationMessage For="@(() => editModel.Blog.Title)" />
+                <InputText class="form-control translucent-text-box shadow-border-xs" id="title" @bind-Value="editModel.Blog.Title" />
+            </div>
+            <div class="form-group">
+                <div class="form-group">
+                    <label for="body" class="text-light">Tags</label><ValidationMessage For="@(() => editModel.Tags)" />
+                    <InputText class="form-control translucent-text-box shadow-border-xs" @bind-Value="newTag" />
+                    <button class="btn btn-success form-control translucent-text-box shadow-border-sm" @onclick="NewTag" @onclick:preventDefault>Add Tag</button>
+                </div>
+                <label for="tags" class="text-light">Tags</label><ValidationMessage For="@(() => editModel.Tags)" />
+                <div class="row">
+                    @foreach (var tag in editModel.Tags ?? new List<Models.Tag>())
+                    {
+                        @if (tag.Name != "Remove")
+                        {
+                            <div class="col-lg-3 col-md-6 col-sm-12">
+                                <InputText class="rounded  shadow-border-xs" @bind-Value="tag.Name" />
+                                <button class="btn btn-success form-control translucent-text-box oi oi-trash shadow-border-sm" @onclick="@(e => RemoveTag(tag.Name))" @onclick:preventDefault>Remove</button>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="body" class="text-light">Photos - Can add up to 4 photos</label><ValidationMessage For="@(() => editModel.Photos)" />
+                <InputText class="form-control translucent-text-box shadow-border-xs" @bind-Value="newPhoto" />
+                <button class="btn btn-success form-control translucent-text-box shadow-border-sm" @onclick="NewPhoto" @onclick:preventDefault>Add Pic</button>
+            </div>
+            <div class="row">
+                @foreach (var photo in editModel.Photos ?? new List<Models.Photos>())
+                {
+                    @if (photo.Link != "Remove")
+                    {
+                        <div class="col-lg-3">
+                            <img width="150" height="200" src="@photo.Link" /><br />
+                            <button class="btn-danger" width="150" height="20" name="butt" @onclick="@(e => RemovePhoto(photo.Link))" @onclick:preventDefault>Remove</button>
+                        </div>
+                    }
+                }
+            </div>
+            <div class="form-group">
+                <ValidationMessage For="@(() => editModel.Blog.Body)" />
+                <button class="btn btn-primary shadow-border-sm" @onclick="AddLink" @onclick:preventDefault>Add Link</button>
+                <InputText @bind-Value="linkName" placeholder="Name of link" class="shadow-border-xs" />
+                <InputText @bind-Value="link" placeholder="Link" class="shadow-border-xs"/>
+                <div class="translucent-text-box">
+                    <textarea rows="10" class="form-control translucent-text-box shadow-border-xs" id="body" value="@editModel.Blog.Body" @oninput="ReplaceText"></textarea>
+                    <p  class="form-control translucent-text-box peeBlogBody shadow-border-xs">
+                    <pre class="preBlogBody">@((MarkupString)blogPreview)</pre></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-success form-control shadow-border-sm" @onclick="IsPublished" type="button">@publishUnPublish</button>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-primary form-control shadow-border-sm" type="submit">Submit</button>
+            </div>
+        </div>
+
+    </EditForm>
+
+    <h1 class="text-danger">@uploadError</h1>
+</div>
+
+<jsnover.net.blazor.Components.Footer />
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    private BlogEditModel editModel = new BlogEditModel();
+    private EditContext editContext;
+    private string blogPreview;
+    private string uploadError;
+    private string newPhoto;
+    private string newTag;
+    private string linkName;
+    private string link;
+    private bool published;
+    private string publishUnPublish = "Publish";
+
+    private void IsPublished()
+    {
+        if (published)
+        {
+            publishUnPublish = "Publish";
+            published = false;
+        }
+        else
+        {
+            publishUnPublish = "Un-Publish";
+            published = true;
+        }
+    }
+
+    private void ReplaceText(ChangeEventArgs e)
+    {
+        editModel.Blog.Body = e.Value.ToString();
+        blogPreview = editModel.Blog.Body?.Replace("\n", "<br />");
+    }
+
+    private void NewPhoto()
+    {
+        if (editModel.Photos.Count < 4)
+        {
+            editModel.Photos.Add(new Models.Photos
+            {
+                Id = 0,
+                Link = newPhoto,
+                BlogId = editModel.Blog.Id
+            });
+            this.StateHasChanged();
+        }
+    }
+
+    private void RemovePhoto(string link)
+    {
+        editModel.Photos.First(photo => photo.Link == link).Link = "Remove";
+        this.StateHasChanged();
+    }
+
+    private void NewTag()
+    {
+        if (editModel.Tags != null)
+        {
+            if (newTag != null && newTag != string.Empty)
+            {
+                editModel.Tags.Add(new Models.Tag
+                {
+                    Id = 0,
+                    Name = newTag,
+                    BlogId = editModel.Blog.Id
+                });
+                this.StateHasChanged();
+            }
+        }
+    }
+
+    private void RemoveTag(string name)
+    {
+        editModel.Tags.First(tag => tag.Name == name).Name = "Remove";
+        this.StateHasChanged();
+    }
+
+    private void AddLink()
+    {
+        editModel.Blog.Body = $"{editModel.Blog.Body} <a href='{link}'>{linkName}</a>";
+        UpdatePreview();
+        this.StateHasChanged();
+    }
+
+    private void UpdatePreview()
+    {
+        blogPreview = editModel.Blog.Body?.Replace("\n", "<br />");
+    }
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(editModel);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var isValid = editContext.Validate();
+
+        if (isValid)
+        {
+            editModel.Blog.Body = blogPreview;
+            editModel.Blog.Published = published;
+            var uploaded = await BlogService.SubmitBlog(editModel);
+            if (uploaded)
+            {
+                NavigationManager.NavigateTo("");
+            }
+            else
+            {
+                uploadError = "There was an ERROR when uploading, save your text before closing the page.";
+                this.StateHasChanged();
+            }
+
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            editModel = await BlogEditModel.MapToBlogPageModel(Id);
+
+            blogPreview = editModel.Blog.Body;
+
+            editModel.Blog.Body = editModel.Blog.Body?.Replace("<br />", "\n");
+
+            published = (bool)editModel.Blog.Published ? false : true;
+
+            IsPublished();
+
+            this.StateHasChanged();
+        }
+    } 
+}

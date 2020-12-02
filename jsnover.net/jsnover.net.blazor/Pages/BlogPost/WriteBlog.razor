@@ -1,0 +1,154 @@
+﻿@page "/writeblog"
+@using DataTransferObjects.BlogModels
+@using Infrastructure.Services
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<h1 class="text-danger">@uploadError</h1>
+
+<div class="container">
+
+    <h3 class="font-weight-bold text-white">Let's Write A New Blog &#128578</h3>
+
+    <EditForm Model="@blogModel" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label for="topic" class="text-light">Topic</label><ValidationMessage For="@(() => blogModel.Topic)" />
+            <InputText class="form-control translucent-text-box shadow-border-xs" id="topic" @bind-Value="blogModel.Topic" />
+        </div>
+        <div class="form-group">
+            <label for="title" class="text-light">Title</label><ValidationMessage For="@(() => blogModel.Title)" />
+            <InputText class="form-control translucent-text-box shadow-border-xs" id="title" @bind-Value="blogModel.Title" />
+        </div>
+        <div class="form-group">
+            <label for="tags" class="text-light">Tags Ex: one, two, three</label><ValidationMessage For="@(() => blogModel.Tags)" />
+            <InputText class="form-control translucent-text-box shadow-border-xs" id="tags" @bind-Value="blogModel.Tags" />
+        </div>
+        <div class="form-group">
+            <label for="body" class="text-light">Photos - Can add up to 4 photos</label><ValidationMessage For="@(() => blogModel.Photos)" />
+            <InputText class="form-control translucent-text-box shadow-border-xs" @bind-Value="newPhoto" />
+            <button class="btn btn-success form-control translucent-text-box shadow-border-sm" @onclick="NewPhoto" @onclick:preventDefault>Add Pic</button>
+        </div>
+        <div class="row">
+            @for (int i = 0; i < photos.Count; i++)
+            {
+                var buttNum = @i;
+                <div class="col-lg-3">
+                    <img width="150" height="200" src="@photos[i]" /><br />
+                    <button class="btn-danger shadow-border-sm" width="150" height="20" name="butt" @onclick="@(e => RemovePhoto(buttNum))" @onclick:preventDefault>Remove</button>
+                </div>
+            }
+        </div>
+        <div class="form-group">
+            <ValidationMessage For="@(() => blogModel.Body)" />
+            <button class="btn btn-primary shadow-border-sm" @onclick="AddLink" @onclick:preventDefault>Add Link</button>
+            <InputText @bind-Value="linkName" placeholder="Name of link" class="shadow-border-xs" />
+            <InputText @bind-Value="link" placeholder="Link" class="shadow-border-xs"/>
+            <div class="translucent-text-box">
+                <textarea rows="10" class="form-control translucent-text-box shadow-border-xs" id="body" value="@blogModel.Body" @oninput="ReplaceText"></textarea>
+                <p class="form-control translucent-text-box peeBlogBody shadow-border-xs">
+                <pre class="preBlogBody">@((MarkupString)blogPreview)</pre></p>
+            </div>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-success form-control shadow-border-sm" @onclick="IsPublished" type="button">@publishUnPublish</button>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-primary form-control shadow-border-sm" type="submit">Submit</button>
+        </div>
+
+    </EditForm>
+
+    <h1 class="text-danger">@uploadError</h1>
+</div>
+
+<jsnover.net.blazor.Components.Footer />
+
+@code {
+    private NewBlogModel blogModel = new NewBlogModel();
+    private EditContext editContext;
+    private string blogPreview;
+    private string uploadError;
+    private string newPhoto;
+    private string linkName;
+    private string link;
+    private bool published = false;
+    private string publishUnPublish = "Publish";
+    private List<string> photos = new List<string>();
+
+    private void IsPublished()
+    {
+        if (published)
+        {
+            publishUnPublish = "Publish";
+            published = false;
+        }
+        else
+        {
+            publishUnPublish = "Un-Publish";
+            published = true;
+        }
+    }
+
+    private void NewPhoto()
+    {
+        if (photos.Count < 4)
+        {
+            photos.Add(newPhoto);
+            this.StateHasChanged();
+        }
+    }
+
+    private void ReplaceText(ChangeEventArgs e)
+    {
+        blogModel.Body = e.Value.ToString().Replace("\t\n", " ");
+        blogPreview = blogModel.Body?.Replace("\t\n", " ").Replace("\n", "<br />");
+    }
+
+    private void RemovePhoto(int index)
+    {
+        photos.RemoveAt(index);
+        this.StateHasChanged();
+    }
+
+    private void AddLink()
+    {
+        blogModel.Body = $"{blogModel.Body} <a href='{link}'>{linkName}</a>";
+        UpdatePreview();
+        this.StateHasChanged();
+    }
+
+    private void UpdatePreview()
+    {
+        blogPreview = blogModel.Body?.Replace("\n", "<br />");
+    }
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(blogModel);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var isValid = editContext.Validate();
+
+        if (isValid)
+        {
+            blogModel.Body = blogPreview;
+            blogModel.Photos = photos;
+            blogModel.Published = published;
+            var uploaded = await BlogService.SubmitBlog(blogModel);
+            if (uploaded)
+            {
+                NavigationManager.NavigateTo("");
+            }
+            else
+            {
+                uploadError = "There was an ERROR when uploading, save your text before closing the page.";
+                this.StateHasChanged();
+            }
+
+        }
+    }
+}
