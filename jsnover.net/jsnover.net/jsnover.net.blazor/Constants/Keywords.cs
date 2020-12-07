@@ -8,7 +8,5 @@
         public const string Tags = "Tags";
         public const string Section = "Section";
         public const string ListName = "List`1";
-
-        public const int ZeroIndex = 0;
     }
 }
