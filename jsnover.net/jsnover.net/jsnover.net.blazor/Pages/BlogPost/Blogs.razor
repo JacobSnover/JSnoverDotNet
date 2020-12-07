@@ -1,6 +1,7 @@
 ﻿@page "/Blogs"
 @page "/Blogs/{type}/{parameter}"
 @using Microsoft.AspNetCore.Identity
+@using System.Text.RegularExpressions
 @using Constants
 @using jsnover.net.blazor.Models
 @inject SignInManager<IdentityUser> SignInManager
@@ -13,36 +14,42 @@
     <div class="form-inline margin-bttm-20">
         @if (SearchItems.TryGetValue(Keywords.Title, out _))
         {
-            <select class="custom-select col mr-4" @onchange="OnValueChanged" title="Region is required ">
-                <option value="Select" selected disabled="disabled">Title Search</option>
-                @foreach (var title in SearchItems[Keywords.Title] ?? new List<string>())
-                {
-                    <option value="@title"> @title</option>
+            <div class="col-sm-4 form-group">
+                <label class="text-white col-sm-10">Title Search</label>
+                <select class="form-control col-sm-10" @onchange="OnValueChanged" title="Title search">
+                    @foreach (var title in SearchItems[Keywords.Title] ?? new List<string>())
+                    {
+                        <option value="@title{-title-}"> @title</option>
 
-                }
-            </select>
+                    }
+                </select>
+            </div>
         }
         @if (SearchItems.TryGetValue(Keywords.Topic, out _))
         {
-            <select class="custom-select col ml-4 mr-4" @onchange="OnValueChanged" title="Region is required ">
-                <option value="Select" selected disabled="disabled">Topic Search</option>
-                @foreach (var topic in SearchItems[Keywords.Topic] ?? new List<string>())
-                {
-                    <option value="@topic"> @topic</option>
+            <div class="col-sm-4 form-group">
+                <label class="text-white col-sm-10">Topic Search</label>
+                <select class="form-control col-sm-10" @onchange="OnValueChanged" title="Topic search">
+                    @foreach (var topic in SearchItems[Keywords.Topic] ?? new List<string>())
+                    {
+                        <option value="@topic{-topic-}"> @topic</option>
 
-                }
-            </select>
+                    }
+                </select>
+            </div>
         }
         @if (SearchItems.TryGetValue(Keywords.Tags, out _))
         {
-            <select class="custom-select col ml-4" @onchange="OnValueChanged" title="Region is required ">
-                <option value="Select" selected disabled="disabled">Tag Search</option>
-                @foreach (var tag in SearchItems[Keywords.Tags] ?? new List<string>())
-                {
-                    <option value="@tag"> @tag</option>
+            <div class="col-sm-4 form-group">
+                <label class="text-white col-sm-10">Tag Search</label>
+                <select class="form-control col-sm-10" @onchange="OnValueChanged" title="Tag search">
+                    @foreach (var tag in SearchItems[Keywords.Tags] ?? new List<string>())
+                    {
+                        <option value="@tag{-tag-}"> @tag</option>
 
-                }
-            </select>
+                    }
+                </select>
+            </div>
         }
     </div>
 
@@ -211,7 +218,7 @@
             this.StateHasChanged();
         }
 
-        if(!gotSearchItems && BlogModels.BlogDisplayModels.Any())
+        if (!gotSearchItems && BlogModels.BlogDisplayModels.Any())
         {
             SearchItems.Add(Keywords.Title, BuildList(Keywords.Title));
             SearchItems.Add(Keywords.Tags, BuildList(Keywords.Tags));
@@ -227,19 +234,21 @@
     {
         var tempList = new List<string>();
 
-        var propList = BlogModels.BlogDisplayModels.Select(blog => blog.GetType().GetProperty(property).GetValue(blog, null)).ToList();
+        var propList = BlogModels.BlogDisplayModels.Select(blog => blog.GetType().GetProperty(property)?.GetValue(blog, null)).ToList();
 
-        if (propList?.ElementAt(Keywords.ZeroIndex).GetType().Name is Keywords.ListName)
+        if (propList?.ElementAt(KeyValues.ZeroIndex).GetType().Name is Keywords.ListName)
         {
             foreach (List<Tag> prop in propList)
             {
                 tempList.AddRange(prop.Select(tag => tag.Name));
             }
             tempList = tempList.Distinct().ToList();
+            tempList.Sort();
         }
         else
         {
             tempList.AddRange(propList.Select(prop => prop.ToString()).Distinct().ToList());
+            tempList.Sort();
         }
 
         return tempList;
@@ -247,7 +256,30 @@
 
     private Task OnValueChanged(ChangeEventArgs e)
     {
+        AnyMatches(e.Value);
+
         return ValueChanged.InvokeAsync(e.Value.ToString());
+    }
+
+    private void AnyMatches(object eventValue)
+    {
+        var searchValue = eventValue.ToString();
+
+        var mc = Regex.Matches(searchValue, @"{-(title|topic|tag)-}$");
+
+        if (mc.Any())
+        {
+            var match = mc.FirstOrDefault();
+            searchValue = Regex.Replace(searchValue, match.Groups[KeyValues.ZeroIndex].Value, string.Empty);
+            SearchBlogs(match.Groups[KeyValues.InnerGroupIndex].Value, searchValue);
+        }
+    }
+
+    private async void SearchBlogs(string type, string parameter)
+    {
+        BlogModels.BlogDisplayModels = DataTransferObjects.BlogModels.BlogDisplayModel
+                    .MapToList(await BlogService.SearchBlogs(type, parameter));
+        this.StateHasChanged();
     }
 
     private void EditBlog(int id)
