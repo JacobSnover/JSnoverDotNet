@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ShaKy\\Source\\Repos\\jsnover.net.blazor\\jsnover.net.blazor\\jsnover.net.blazor.csproj": {}
+    "C:\\Users\\ShaKy\\Source\\Repos\\JSnoverDotNet\\jsnover.net.blazor\\jsnover.net.blazor.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ShaKy\\Source\\Repos\\jsnover.net.blazor\\jsnover.net.blazor\\jsnover.net.blazor.csproj": {
+    "C:\\Users\\ShaKy\\Source\\Repos\\JSnoverDotNet\\jsnover.net.blazor\\jsnover.net.blazor.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ShaKy\\Source\\Repos\\jsnover.net.blazor\\jsnover.net.blazor\\jsnover.net.blazor.csproj",
+        "projectUniqueName": "C:\\Users\\ShaKy\\Source\\Repos\\JSnoverDotNet\\jsnover.net.blazor\\jsnover.net.blazor.csproj",
         "projectName": "jsnover.net.blazor",
-        "projectPath": "C:\\Users\\ShaKy\\Source\\Repos\\jsnover.net.blazor\\jsnover.net.blazor\\jsnover.net.blazor.csproj",
+        "projectPath": "C:\\Users\\ShaKy\\Source\\Repos\\JSnoverDotNet\\jsnover.net.blazor\\jsnover.net.blazor.csproj",
         "packagesPath": "C:\\Users\\ShaKy\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ShaKy\\Source\\Repos\\jsnover.net.blazor\\jsnover.net.blazor\\obj\\",
+        "outputPath": "C:\\Users\\ShaKy\\Source\\Repos\\JSnoverDotNet\\jsnover.net.blazor\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
@@ -21,15 +21,15 @@
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "netcoreapp3.1"
+          "net5.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "netcoreapp3.1": {
-            "targetAlias": "netcoreapp3.1",
+          "net5.0": {
+            "targetAlias": "net5.0",
             "projectReferences": {}
           }
         },
@@ -40,42 +40,46 @@
         }
       },
       "frameworks": {
-        "netcoreapp3.1": {
-          "targetAlias": "netcoreapp3.1",
+        "net5.0": {
+          "targetAlias": "net5.0",
           "dependencies": {
+            "Blazored.SessionStorage": {
+              "target": "Package",
+              "version": "[1.0.12, )"
+            },
             "Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[3.1.8, )"
+              "version": "[5.0.1, )"
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[3.1.8, )"
+              "version": "[5.0.1, )"
             },
             "Microsoft.AspNetCore.Identity.UI": {
               "target": "Package",
-              "version": "[3.1.8, )"
+              "version": "[5.0.1, )"
             },
             "Microsoft.Azure.SignalR": {
               "target": "Package",
-              "version": "[1.5.1, )"
+              "version": "[1.6.1, )"
             },
             "Microsoft.EntityFrameworkCore.SqlServer": {
               "target": "Package",
-              "version": "[3.1.8, )"
+              "version": "[5.0.1, )"
             },
             "Microsoft.EntityFrameworkCore.Tools": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
               "target": "Package",
-              "version": "[3.1.8, )"
+              "version": "[5.0.1, )"
             },
             "Microsoft.VisualStudio.Web.CodeGeneration.Design": {
               "target": "Package",
-              "version": "[3.1.4, )"
+              "version": "[5.0.1, )"
             },
             "SendGrid": {
               "target": "Package",
-              "version": "[9.21.0, )"
+              "version": "[9.21.2, )"
             },
             "SendGrid.Extensions.DependencyInjection": {
               "target": "Package",
