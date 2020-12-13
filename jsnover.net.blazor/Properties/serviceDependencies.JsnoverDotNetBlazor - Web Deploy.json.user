@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "signalr1": {
+      "restored": true,
+      "restoreTime": "2020-08-31T16:38:49.3710534Z"
+    }
+  },
+  "parameters": {
+    "signalr1.resourceGroupName": {
+      "Type": "resourceGroup",
+      "Value": "JsnoverDotNet"
+    },
+    "signalr1.subscriptionId": {
+      "Type": "subscription",
+      "Value": "78c269a9-2a55-4b77-8ca0-801aba65cc11"
+    }
+  }
+}

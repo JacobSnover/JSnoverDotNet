@@ -1,0 +1,34 @@
+{
+  "dependencies": {
+    "signalr1": {
+      "restored": true,
+      "restoreTime": "2020-08-31T16:10:05.9476747Z"
+    },
+    "secrets1": {
+      "restored": true,
+      "restoreTime": "2020-09-17T00:11:26.184579Z"
+    },
+    "mssql1": {
+      "restored": true,
+      "restoreTime": "2020-09-17T00:11:43.1064961Z"
+    }
+  },
+  "parameters": {
+    "signalr1.resourceGroupName": {
+      "Type": "resourceGroup",
+      "Value": "JsnoverDotNet"
+    },
+    "mssql1.subscriptionId": {
+      "Type": "subscription",
+      "Value": "78c269a9-2a55-4b77-8ca0-801aba65cc11"
+    },
+    "mssql1.resourceGroupName": {
+      "Type": "resourceGroup",
+      "Value": "JsnoverDotNet"
+    },
+    "signalr1.subscriptionId": {
+      "Type": "subscription",
+      "Value": "78c269a9-2a55-4b77-8ca0-801aba65cc11"
+    }
+  }
+}
