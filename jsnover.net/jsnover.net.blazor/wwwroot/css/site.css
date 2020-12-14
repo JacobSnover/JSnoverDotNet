@@ -372,3 +372,7 @@ a.blogLink:hover {
     text-decoration: underline;
     cursor: pointer;
 }
+
+.aLink {
+    color: white;
+}

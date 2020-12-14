@@ -56,15 +56,13 @@
     <table class="table-bordered table-responsive-lg blog-background rounded-lg shadow-border-sm">
         <thead class="thead-dark">
             <tr>
-                <th scope="col" class="p-3 pl-3 text-center text-white">Title</th>
-                <th scope="col" class="p-3 pl-3 text-center text-white">Topic</th>
-                <th scope="col" class="p-3 pl-3 text-center text-white">Tags</th>
-                <th scope="col" class="p-3 pl-3 text-center text-white">Submit Date</th>
-                <th scope="col" class="p-3 pl-3 text-center text-white">Action</th>
+                <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Title</th>
+                <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Submit Date</th>                
                 <AuthorizeView>
                     <Authorized>
-                        <th scope="col" class="p-3 pl-3 text-center text-white">Likes</th>
-                        <th scope="col" class="p-3 pl-3 text-center text-white">Views</th>
+                        <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Action</th>
+                        <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Likes</th>
+                        <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Views</th>
                     </Authorized>
                 </AuthorizeView>
             </tr>
@@ -72,44 +70,32 @@
         <tbody>
             @foreach (var blog in BlogModels?.BlogDisplayModels ?? new List<DataTransferObjects.BlogModels.BlogDisplayModel>())
             {
+                var id = blog.BlogId;
+
                 if ((bool)blog.Published)
                 {
                     <tr>
-                        <td class="pr-3 pl-3 text-white">@blog.Title</td>
-                        <td class="pr-3 pl-3 text-white">@blog.Topic</td>
-                        <td class="pr-3 pl-3 text-white">
-                            @foreach (var tag in blog.Tags)
-                            {
-                                <span>@tag.Name,</span> <br />
-                            }
+                        <td class="pr-3 pl-3 border-dark">                            
+                            <button @onclick="@(e => ViewBlog(id))" class="aLink font-weight-bold">@blog.Title</button>
                         </td>
-                        <td class="p-3 pl-3 text-white">@blog.SubmitDate.ToShortDateString()</td>
+                        <td class="p-3 pl-3 text-white border-dark">@blog.SubmitDate.ToShortDateString()</td>
 
                         <AuthorizeView>
                             <Authorized>
-                                <td class="p-3 pl-3">
-                                    @{
-                                        var id = blog.BlogId;
-                                        <button @onclick="@(e => ViewBlog(id))" class="btn btn-success oi oi-eye shadow-border-sm text-white"><h6>View</h6></button>
-
-                                        <button @onclick="@(e => EditBlog(id))" class="btn btn-primary oi oi-pencil shadow-border-sm text-white"><h6>Edit</h6></button>
+                                <td class="p-3 pl-3 border-dark">
+                                    @{                                        
+                                        <button @onclick="@(e => EditBlog(id))" class="btn btn-primary oi oi-pencil shadow-border-sm text-white"></button>
                                     }
                                 </td>
 
-                                <td class="pr-3 pl-3">
+                                <td class="pr-3 pl-3 border-dark">
                                     @blog.Likes
                                 </td>
-                                <td class="pr-3 pl-3">
+                                <td class="pr-3 pl-3 border-dark">
                                     @blog.Views
                                 </td>
                             </Authorized>
                             <NotAuthorized>
-                                <td class="p-3">
-                                    @{
-                                        var id = blog.BlogId;
-                                        <button @onclick="@(e => ViewBlog(id))" class="btn btn-success oi oi-eye shadow-border-sm text-white"><h6>View</h6></button>
-                                    }
-                                </td>
                             </NotAuthorized>
                         </AuthorizeView>
                     </tr>
