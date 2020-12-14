@@ -37,17 +37,6 @@ namespace jsnover.net.blazor.Models
         {
             if (!optionsBuilder.IsConfigured)
             {
-                //var builder = new ConfigurationBuilder();
-                //builder.AddJsonFile("appsettings.json", optional: false);
-
-                //var configuration = builder.Build();
-
-                //var connectionString = configuration.GetConnectionString("DefaultConnection").ToString();
-                //if (!optionsBuilder.IsConfigured)
-                //{
-                //    optionsBuilder.UseSqlServer(connectionString);
-                //}
-
                 optionsBuilder.UseSqlServer(ContextOptions.connectionString);
             }
         }
