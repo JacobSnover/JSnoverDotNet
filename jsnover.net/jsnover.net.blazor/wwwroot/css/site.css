@@ -33,6 +33,7 @@ app {
     .main .top-row {
         background-color: #f7f7f7;
         justify-content: flex-end;
+        z-index: 1;
     }
 
         .main .top-row > a, .main .top-row .btn-link {
