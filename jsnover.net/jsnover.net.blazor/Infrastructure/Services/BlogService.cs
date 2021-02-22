@@ -109,11 +109,11 @@ namespace jsnover.net.blazor.Infrastructure.Services
             return blogList;
         }
 
-        public async Task<BlogDisplayModel> GetBlog(int id)
+        public async Task<BlogDisplayModel> GetBlog(string id)
         {
             var blogList = new List<BlogDisplayModel>();
             blogList = await GetDataFromAzureSql();
-            return blogList.SingleOrDefault(blog => blog.BlogId == id);
+            return blogList.SingleOrDefault(blog => blog.BlogId.ToString() == id);
         }
 
         public async Task<Blog[]> SearchBlogs(string type, string parameter)

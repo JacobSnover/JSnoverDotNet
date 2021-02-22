@@ -1,4 +1,4 @@
-﻿@page "/blogview/{id:int}"
+﻿@page "/blogview/{title}"
 @using DataTransferObjects.BlogModels
 @using Infrastructure.Services
 @inject DataTransferObjects.BlogModels.BlogViewModel BlogViewModel
@@ -107,9 +107,12 @@
     [Parameter]
     public int id { get; set; }
 
+    [Parameter]
+    public string title { get; set; }
+
     protected override void OnInitialized()
     {
-        if(BlogViewModel.blog is null)
+        if (BlogViewModel.blog is null)
         {
             BlogViewModel.blog = new BlogDisplayModel() { Body = "Loading" };
         }
