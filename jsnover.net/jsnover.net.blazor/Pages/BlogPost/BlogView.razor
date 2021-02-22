@@ -127,7 +127,7 @@
 
         if (firstRender)
         {
-            BlogViewModel.blog = await BlogService.GetBlog(id);
+            BlogViewModel.blog = await BlogService.GetBlog(title);
 
             this.StateHasChanged();
         }
