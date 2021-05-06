@@ -1,7 +1,8 @@
 ﻿@page "/EditBlog/{Id:int}"
 @using jsnover.net.blazor.DataTransferObjects.BlogModels
-@using Infrastructure.Services 
+@using Infrastructure.Services
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @attribute [Authorize]
 
 <h3>EditBlog</h3>
@@ -62,14 +63,51 @@
             </div>
             <div class="form-group">
                 <ValidationMessage For="@(() => editModel.Blog.Body)" />
-                <button class="btn btn-primary shadow-border-sm" @onclick="AddLink" @onclick:preventDefault>Add Link</button>
-                <InputText @bind-Value="linkName" placeholder="Name of link" class="shadow-border-xs" />
-                <InputText @bind-Value="link" placeholder="Link" class="shadow-border-xs"/>
-                <div class="translucent-text-box">
-                    <textarea rows="10" class="form-control translucent-text-box shadow-border-xs" id="body" value="@editModel.Blog.Body" @oninput="ReplaceText"></textarea>
-                    <p  class="form-control translucent-text-box peeBlogBody shadow-border-xs">
-                    <pre class="preBlogBody">@((MarkupString)blogPreview)</pre></p>
-                </div>
+                @if (EditorEnabled)
+                {
+                    <div id="toolbar" class="form-control shadow-border-xs">
+                        <span class="ql-formats">
+                            <select class="ql-font">
+                                <option selected=""></option>
+                                <option value="serif"></option>
+                                <option value="monospace"></option>
+                            </select>
+                            <select class="ql-size">
+                                <option value="small"></option>
+                                <option selected=""></option>
+                                <option value="large"></option>
+                                <option value="huge"></option>
+                            </select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-color"></select>
+                            <select class="ql-background"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                            <button class="ql-indent" value="-1"></button>
+                            <button class="ql-indent" value="+1"></button>
+                            <select class="ql-align">
+                                <option selected=""></option>
+                                <option value="center"></option>
+                                <option value="right"></option>
+                                <option value="justify"></option>
+                            </select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                        </span>
+                    </div>
+                }
+                <div @ref="@divEditorElement" class="textarea form-control translucent-text-box shadow-border-xs" style="height:400px" />
+
             </div>
             <div class="form-group">
                 <button class="btn btn-success form-control shadow-border-sm" @onclick="IsPublished" type="button">@publishUnPublish</button>
@@ -95,10 +133,49 @@
     private string uploadError;
     private string newPhoto;
     private string newTag;
-    private string linkName;
-    private string link;
     private bool published;
     private string publishUnPublish = "Publish";
+    private ElementReference divEditorElement;
+    private string EditorContent;
+    private bool EditorEnabled = true;
+
+    async Task GetHTML()
+    {
+        EditorContent = "";
+        editModel.Blog.Body = await JSRuntime.InvokeAsync<string>(
+            "QuillFunctions.getQuillHTML", divEditorElement);
+    }
+
+    async Task insertEditorText()
+    {
+        var QuillDelta = await JSRuntime.InvokeAsync<object>(
+            "QuillFunctions.insertText", divEditorElement, editModel.Blog.Body);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            editModel = await BlogEditModel.MapToBlogPageModel(Id);
+
+            //editModel.Blog.Body = editModel.Blog.Body?.Replace("<br />", "\n");
+
+            published = (bool)editModel.Blog.Published ? false : true;
+
+            IsPublished();
+
+            this.StateHasChanged();
+
+            await JSRuntime.InvokeAsync<string>(
+                "QuillFunctions.createQuill", divEditorElement);
+        }
+
+        if (editModel.Blog.Body != "Empty")
+        {
+
+            await insertEditorText();
+        }
+    }
 
     private void IsPublished()
     {
@@ -112,12 +189,6 @@
             publishUnPublish = "Un-Publish";
             published = true;
         }
-    }
-
-    private void ReplaceText(ChangeEventArgs e)
-    {
-        editModel.Blog.Body = e.Value.ToString();
-        blogPreview = editModel.Blog.Body?.Replace("\n", "<br />");
     }
 
     private void NewPhoto()
@@ -163,18 +234,6 @@
         this.StateHasChanged();
     }
 
-    private void AddLink()
-    {
-        editModel.Blog.Body = $"{editModel.Blog.Body} <a href='{link}'>{linkName}</a>";
-        UpdatePreview();
-        this.StateHasChanged();
-    }
-
-    private void UpdatePreview()
-    {
-        blogPreview = editModel.Blog.Body?.Replace("\n", "<br />");
-    }
-
     protected override void OnInitialized()
     {
         editContext = new EditContext(editModel);
@@ -186,7 +245,7 @@
 
         if (isValid)
         {
-            editModel.Blog.Body = blogPreview;
+            await GetHTML();
             editModel.Blog.Published = published;
             var uploaded = await BlogService.SubmitBlog(editModel);
             if (uploaded)
@@ -202,21 +261,5 @@
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            editModel = await BlogEditModel.MapToBlogPageModel(Id);
 
-            blogPreview = editModel.Blog.Body;
-
-            editModel.Blog.Body = editModel.Blog.Body?.Replace("<br />", "\n");
-
-            published = (bool)editModel.Blog.Published ? false : true;
-
-            IsPublished();
-
-            this.StateHasChanged();
-        }
-    } 
 }

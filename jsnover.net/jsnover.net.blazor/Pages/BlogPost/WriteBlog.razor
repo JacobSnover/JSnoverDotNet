@@ -2,6 +2,7 @@
 @using DataTransferObjects.BlogModels
 @using Infrastructure.Services
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @attribute [Authorize]
 
 <h1 class="text-danger">@uploadError</h1>
@@ -42,14 +43,50 @@
         </div>
         <div class="form-group">
             <ValidationMessage For="@(() => blogModel.Body)" />
-            <button class="btn btn-primary shadow-border-sm" @onclick="AddLink" @onclick:preventDefault>Add Link</button>
-            <InputText @bind-Value="linkName" placeholder="Name of link" class="shadow-border-xs" />
-            <InputText @bind-Value="link" placeholder="Link" class="shadow-border-xs"/>
-            <div class="translucent-text-box">
-                <textarea rows="10" class="form-control translucent-text-box shadow-border-xs" id="body" value="@blogModel.Body" @oninput="ReplaceText"></textarea>
-                <p class="form-control translucent-text-box peeBlogBody shadow-border-xs">
-                <pre class="preBlogBody">@((MarkupString)blogPreview)</pre></p>
-            </div>
+            @if (EditorEnabled)
+            {
+                <div id="toolbar" class="form-control shadow-border-xs">
+                    <span class="ql-formats">
+                        <select class="ql-font">
+                            <option selected=""></option>
+                            <option value="serif"></option>
+                            <option value="monospace"></option>
+                        </select>
+                        <select class="ql-size">
+                            <option value="small"></option>
+                            <option selected=""></option>
+                            <option value="large"></option>
+                            <option value="huge"></option>
+                        </select>
+                    </span>
+                    <span class="ql-formats">
+                        <button class="ql-bold"></button>
+                        <button class="ql-italic"></button>
+                        <button class="ql-underline"></button>
+                        <button class="ql-strike"></button>
+                    </span>
+                    <span class="ql-formats">
+                        <select class="ql-color"></select>
+                        <select class="ql-background"></select>
+                    </span>
+                    <span class="ql-formats">
+                        <button class="ql-list" value="ordered"></button>
+                        <button class="ql-list" value="bullet"></button>
+                        <button class="ql-indent" value="-1"></button>
+                        <button class="ql-indent" value="+1"></button>
+                        <select class="ql-align">
+                            <option selected=""></option>
+                            <option value="center"></option>
+                            <option value="right"></option>
+                            <option value="justify"></option>
+                        </select>
+                    </span>
+                    <span class="ql-formats">
+                        <button class="ql-link"></button>
+                    </span>
+                </div>
+            }
+            <div @ref="@divEditorElement" class="textarea form-control translucent-text-box shadow-border-xs" style="height:400px" />
         </div>
         <div class="form-group">
             <button class="btn btn-success form-control shadow-border-sm" @onclick="IsPublished" type="button">@publishUnPublish</button>
@@ -71,11 +108,41 @@
     private string blogPreview;
     private string uploadError;
     private string newPhoto;
-    private string linkName;
-    private string link;
     private bool published = false;
     private string publishUnPublish = "Publish";
     private List<string> photos = new List<string>();
+    private ElementReference divEditorElement;
+    private string EditorContent;
+    private bool EditorEnabled = true;
+
+    async Task GetHTML()
+    {
+        EditorContent = "";
+        blogModel.Body = await JSRuntime.InvokeAsync<string>(
+            "QuillFunctions.getQuillHTML", divEditorElement);
+    }
+
+    async Task insertEditorText()
+    {
+        var QuillDelta = await JSRuntime.InvokeAsync<object>(
+            "QuillFunctions.insertText", divEditorElement, "Hello world");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeAsync<string>(
+                "QuillFunctions.createQuill", divEditorElement);
+
+        }
+
+        if (blogModel.Body is "Empty")
+        {
+
+            await insertEditorText();
+        }
+    }
 
     private void IsPublished()
     {
@@ -100,22 +167,9 @@
         }
     }
 
-    private void ReplaceText(ChangeEventArgs e)
-    {
-        blogModel.Body = e.Value.ToString().Replace("\t\n", " ");
-        blogPreview = blogModel.Body?.Replace("\t\n", " ").Replace("\n", "<br />");
-    }
-
     private void RemovePhoto(int index)
     {
         photos.RemoveAt(index);
-        this.StateHasChanged();
-    }
-
-    private void AddLink()
-    {
-        blogModel.Body = $"{blogModel.Body} <a href='{link}'>{linkName}</a>";
-        UpdatePreview();
         this.StateHasChanged();
     }
 
@@ -135,7 +189,7 @@
 
         if (isValid)
         {
-            blogModel.Body = blogPreview;
+            await GetHTML();
             blogModel.Photos = photos;
             blogModel.Published = published;
             var uploaded = await BlogService.SubmitBlog(blogModel);
