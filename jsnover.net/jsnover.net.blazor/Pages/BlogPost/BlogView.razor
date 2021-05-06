@@ -40,13 +40,8 @@
                         <img width="150" height="200" src="@photo.Link" class="column" />
                     }
                 </p>
-                <div class="col-lg-12">
-                    <p>
-                        <strong>
-                            <pre class="preBlogBody text-white">@((MarkupString)BlogViewModel.blog.Body)</pre>
-                        </strong>
-
-                    </p>
+                <div class="col-lg-12 ql-editor">
+                   @((MarkupString)BlogViewModel.blog.Body)
                 </div>
             </div>
         </div>

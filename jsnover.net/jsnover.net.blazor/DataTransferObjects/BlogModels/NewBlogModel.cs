@@ -13,7 +13,7 @@ namespace jsnover.net.blazor.DataTransferObjects.BlogModels
         [Required]
         public string Title { get; set; }
         [Required]
-        public string Body { get; set; }
+        public string Body { get; set; } = "Empty";
         public DateTime SubmitDate { get; set; }
         public DateTime? EditDate { get; set; }
         [Required]
