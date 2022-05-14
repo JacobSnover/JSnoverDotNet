@@ -306,6 +306,10 @@ button {
     padding: 25px 0px 25px 25px;
 }
 
+.blog-pad-right-5 {
+    padding: 0px 5px 0px 0px;
+}
+
 .blogHeader {
     background-color: rgb(67, 173, 223);
     text-decoration-color: rgb(238, 210, 241);

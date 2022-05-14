@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace jsnover.net.blazor.Infrastructure.SqlRepo
 {
-    public class JsnoRepo
+    public static class JsnoRepo
     {
         public static async Task<bool> SubmitBlog(Blog[] blogs)
         {
