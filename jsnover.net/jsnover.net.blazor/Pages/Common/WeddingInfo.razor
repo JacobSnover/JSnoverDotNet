@@ -1,0 +1,22 @@
+﻿@page "/wedding"
+
+<div class="blog-pad">
+    <div class="col-lg-12 blog-background rounded-lg shadow-border-sm text-center">
+        <h1>WeddingInfo</h1>
+        <div>
+            <a href=""><h3>Take a look at our Registry!</h3></a>
+        </div>
+        <div>
+            <h3>Menu</h3>
+            @foreach (var item in Menu)
+            {
+                <h6>@item</h6>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+    public List<string> Menu { get; set; } = new() { "Chicken", "Not Chicken", "Some Other Stuff", "And One Other Thing" };
+}
