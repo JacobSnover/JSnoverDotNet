@@ -385,3 +385,20 @@ a.blogLink:hover {
 textarea {
     height: 300px;
 }
+
+.wedding-background {
+    background-color: rgba(127, 140, 199, 0.8);
+    border: solid;
+    border-color: rgb(149, 7, 192);
+    border-bottom-width: 4px;
+    height: 2000px;
+}
+
+.background-image-wedding {
+    background-image: linear-gradient(150deg, #3a0647 20%, rgb(5, 39, 103) 100%);
+    border-radius: 50px, 1px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
