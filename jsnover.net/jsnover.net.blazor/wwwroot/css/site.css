@@ -381,3 +381,7 @@ a.blogLink:hover {
 .footTopMargin {
     margin-top: 20px;
 }
+
+textarea {
+    height: 300px;
+}
