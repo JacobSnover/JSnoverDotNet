@@ -112,12 +112,10 @@
     private string publishUnPublish = "Publish";
     private List<string> photos = new List<string>();
     private ElementReference divEditorElement;
-    private string EditorContent;
     private bool EditorEnabled = true;
 
     async Task GetHTML()
     {
-        EditorContent = "";
         blogModel.Body = await JSRuntime.InvokeAsync<string>(
             "QuillFunctions.getQuillHTML", divEditorElement);
     }

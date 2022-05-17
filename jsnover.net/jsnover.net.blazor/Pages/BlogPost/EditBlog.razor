@@ -129,19 +129,16 @@
     public int Id { get; set; }
     private BlogEditModel editModel = new BlogEditModel();
     private EditContext editContext;
-    private string blogPreview;
     private string uploadError;
     private string newPhoto;
     private string newTag;
     private bool published;
     private string publishUnPublish = "Publish";
     private ElementReference divEditorElement;
-    private string EditorContent;
     private bool EditorEnabled = true;
 
     async Task GetHTML()
     {
-        EditorContent = "";
         editModel.Blog.Body = await JSRuntime.InvokeAsync<string>(
             "QuillFunctions.getQuillHTML", divEditorElement);
     }
