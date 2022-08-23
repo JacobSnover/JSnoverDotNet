@@ -1,7 +1,21 @@
 ﻿@page "/solitaire"
+@inject HttpClient client
+@using System.Text.Json
+@using jsnover.net.blazor.Models
 
 <h3>Solitaire</h3>
 
-@code {
+<button class="btn btn-primary" @onclick="NewGame">New Game</button>
 
+@code {
+        private async Task NewGame()
+        {
+            var response = await client.GetAsync("https://www.deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1");
+            var content = await response.Content.ReadAsStringAsync();
+            var newDeck = JsonSerializer.Deserialize<NewDeck>(content);
+
+            var deckResponse = await client.GetAsync($"https://www.deckofcardsapi.com/api/deck/{newDeck.deck_id}/draw/?count=52");
+            var deckContent = await deckResponse.Content.ReadAsStringAsync();
+            var newCardDraw = JsonSerializer.Deserialize<CardDraw>(deckContent);
+        }
 }
