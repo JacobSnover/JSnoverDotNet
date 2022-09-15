@@ -11,8 +11,6 @@
 @code {
         private async Task NewGame()
         {
-            var newDeck = await cardService.GetDeck();
-
-            var cardDraw = await cardService.DrawAllCards();
+            await cardService.CreateGameDictionary();
         }
 }
