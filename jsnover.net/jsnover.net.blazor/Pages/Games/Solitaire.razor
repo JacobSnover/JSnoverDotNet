@@ -3,14 +3,50 @@
 @inject jsnover.net.blazor.Infrastructure.Services.CardService cardService
 @using System.Text.Json
 @using jsnover.net.blazor.Models
+@using Constants.Game
 
-<h3>Solitaire</h3>
+@if (GameNotStarted)
+{
+    <button class="btn btn-primary" @onclick="NewGame">New Game</button>
+}
+else
+{
+    <div class="rounded shadow-border p-5 GameBoard">
+        <div class="col-sm-12 row">
+            <div class="col-sm-6">
+                <img class="me-100p" height="150" width="105" src="@SolitaireImages.BacokOfCardImage"/>
+                <img height="150" width="105" src="@CardDraw.cards[1].image" />
+                <img height="150" width="105" src="@CardDraw.cards[2].image" />
+                <img height="150" width="105" src="@CardDraw.cards[3].image" />
+            </div>
+            <div class="col-sm-6 pr-5 pl-5 row text-center">
+                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;margin-right:20px">
+                    <img height="140" width="95" src="@SolitaireImages.AceClubs" />
+                </div>
+                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;margin-right:20px">
+                    <img height="140" width="95" src="@SolitaireImages.AceSpades"/>
+                </div>
+                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;margin-right:20px">
+                    <img height="140" width="95" src="@SolitaireImages.AceHearts"/>
+                </div>
+                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;">
+                    <img height="140" width="95" src="@SolitaireImages.AceDiamonds"/>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
-<button class="btn btn-primary" @onclick="NewGame">New Game</button>
 
 @code {
-        private async Task NewGame()
-        {
-            await cardService.CreateGameDictionary();
-        }
+    private bool GameNotStarted { get; set; } = true;
+    private CardDraw CardDraw { get; set; } = new();
+
+    private async Task NewGame()
+    {
+        await cardService.CreateGameDictionary();
+        GameNotStarted = false;
+        StateHasChanged();
+    }
+        
 }
