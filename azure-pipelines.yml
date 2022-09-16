@@ -36,8 +36,12 @@ steps:
 
 - task: VSTest@2
   inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: |
+      **\*test*.dll
+      !**\*TestAdapter.dll
+      !**\obj\**
+    searchFolder: '$(build.artifactStagingDirectory)\WebApp.zip'
 
 - task: AzureRmWebAppDeployment@4
   inputs:
