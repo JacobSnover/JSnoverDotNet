@@ -41,7 +41,7 @@ steps:
       **\*test*.dll
       !**\*TestAdapter.dll
       !**\obj\**
-    searchFolder: '$(build.artifactStagingDirectory)\WebApp.zip'
+    searchFolder: '$(System.DefaultWorkingDirectory)'
 
 - task: AzureRmWebAppDeployment@4
   inputs:
