@@ -43,7 +43,10 @@ namespace jsnover.net.blazor
             services.AddSingleton<BlogListModel>();
             services.AddScoped<BlogService>();
             services.AddScoped<BlogViewModel>();
+            services.AddScoped<CardService>();
             services.AddBlazoredSessionStorage();
+            services.AddControllersWithViews();
+            services.AddHttpClient();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
