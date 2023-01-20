@@ -3,6 +3,8 @@
 
 .GameBoard {
     background-color: forestgreen;
+    width: 100%;
+    height: 90vh;
 }
 
 .me-100p {

@@ -68,7 +68,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
 
         // shaffle deck{List<Card>}
 
-        public async Task CreateGameDictionary()
+        public async Task<Dictionary<string, List<Card>>> CreateGameDictionary()
         {
             await GetDeck();
             await DrawAllCards();
@@ -88,6 +88,8 @@ namespace jsnover.net.blazor.Infrastructure.Services
             GameDictionary.Add("DiamondPile", new List<Card>());
             GameDictionary.Add("HeartPile", new List<Card>());
             GameDictionary.Add("DiscardPile", new List<Card>());
+
+            return GameDictionary;
         }
     }
 }

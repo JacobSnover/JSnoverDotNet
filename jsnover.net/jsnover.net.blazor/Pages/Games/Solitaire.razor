@@ -12,27 +12,26 @@
 else
 {
     <div class="rounded shadow-border p-5 GameBoard">
-        <div class="col-sm-12 row">
-            <div class="col-sm-6">
-                <img class="me-100p" height="150" width="105" src="@SolitaireImages.BacokOfCardImage"/>
-                <img height="150" width="105" src="@CardDraw.cards[1].image" />
-                <img height="150" width="105" src="@CardDraw.cards[2].image" />
-                <img height="150" width="105" src="@CardDraw.cards[3].image" />
-            </div>
-            <div class="col-sm-6 pr-5 pl-5 row text-center">
-                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;margin-right:20px">
-                    <img height="140" width="95" src="@SolitaireImages.AceClubs" />
-                </div>
-                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;margin-right:20px">
-                    <img height="140" width="95" src="@SolitaireImages.AceSpades"/>
-                </div>
-                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;margin-right:20px">
-                    <img height="140" width="95" src="@SolitaireImages.AceHearts"/>
-                </div>
-                <div class="border border-dark p-2 text-center" style="height:160px;width:115px;">
-                    <img height="140" width="95" src="@SolitaireImages.AceDiamonds"/>
-                </div>
-            </div>
+        <div class="col-12 row" style="height:20vh">
+            <img height="100%" width="10%" style="position:absolute;left:5%;top:5%" src="@SolitaireImages.BacokOfCardImage" />
+
+            <img height="100%" width="10%" style="position:absolute;z-index:0;left:20%;top:5%" src="@Dealer["Deal"][0].image" />
+            <img height="100%" width="10%" style="position:absolute;z-index:1;left:25%;top:5%" src="@Dealer["Deal"][1].image" />
+            <img height="100%" width="10%" style="position:absolute;z-index:2;left:30%;top:5%" src="@Dealer["Deal"][2].image" />
+
+
+            <img height="100%" width="10%" style="position:absolute;left:54%;top:5%" src="@SolitaireImages.AceClubs" />
+
+
+            <img height="100%" width="10%" style="position:absolute;left:66%;top:5%" src="@SolitaireImages.AceSpades" />
+
+            <img height="100%" width="10%" style="position:absolute;left:78%;top:5%" src="@SolitaireImages.AceHearts" />
+
+            <img height="100%" width="10%" style="position:absolute;left:90%;top:5%" src="@SolitaireImages.AceDiamonds" />
+             
+        </div>
+        <div class="col-12">
+
         </div>
     </div>
 }
@@ -41,12 +40,13 @@ else
 @code {
     private bool GameNotStarted { get; set; } = true;
     private CardDraw CardDraw { get; set; } = new();
+    private Dictionary<string, List<Card>> Dealer { get; set; }
 
     private async Task NewGame()
     {
-        await cardService.CreateGameDictionary();
+        Dealer = await cardService.CreateGameDictionary();
         GameNotStarted = false;
         StateHasChanged();
     }
-        
+
 }
