@@ -5,7 +5,7 @@ VisualStudioVersion = 17.3.32505.426
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "jsnover.net.blazor", "jsnover.net.blazor\jsnover.net.blazor.csproj", "{E5BAAAAE-8099-4526-9821-8B66CA91A036}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{165A0560-0E06-44A5-8075-34FDA35A9E6F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTests", "UnitTests\UnitTests.csproj", "{165A0560-0E06-44A5-8075-34FDA35A9E6F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

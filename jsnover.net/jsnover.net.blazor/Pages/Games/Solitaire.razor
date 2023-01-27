@@ -1,51 +1,28 @@
 ﻿@page "/solitaire"
-@inject HttpClient client
 @inject jsnover.net.blazor.Infrastructure.Services.CardService cardService
-@using System.Text.Json
 @using jsnover.net.blazor.Models
-@using Constants.Game
+@using jsnover.net.blazor.Components
 
-@if (GameNotStarted)
+@if (BeforeGame)
 {
     <button class="btn btn-primary" @onclick="NewGame">New Game</button>
 }
 else
 {
-    <div class="rounded shadow-border p-5 GameBoard">
-        <div class="col-12 row" style="height:20vh">
-            <img height="100%" width="10%" style="position:absolute;left:5%;top:5%" src="@SolitaireImages.BacokOfCardImage" />
+    <GameBoard Dealer="Dealer">
 
-            <img height="100%" width="10%" style="position:absolute;z-index:0;left:20%;top:5%" src="@Dealer["Deal"][0].image" />
-            <img height="100%" width="10%" style="position:absolute;z-index:1;left:25%;top:5%" src="@Dealer["Deal"][1].image" />
-            <img height="100%" width="10%" style="position:absolute;z-index:2;left:30%;top:5%" src="@Dealer["Deal"][2].image" />
-
-
-            <img height="100%" width="10%" style="position:absolute;left:54%;top:5%" src="@SolitaireImages.AceClubs" />
-
-
-            <img height="100%" width="10%" style="position:absolute;left:66%;top:5%" src="@SolitaireImages.AceSpades" />
-
-            <img height="100%" width="10%" style="position:absolute;left:78%;top:5%" src="@SolitaireImages.AceHearts" />
-
-            <img height="100%" width="10%" style="position:absolute;left:90%;top:5%" src="@SolitaireImages.AceDiamonds" />
-             
-        </div>
-        <div class="col-12">
-
-        </div>
-    </div>
+    </GameBoard>
 }
 
 
 @code {
-    private bool GameNotStarted { get; set; } = true;
-    private CardDraw CardDraw { get; set; } = new();
+    private bool BeforeGame { get; set; } = true;
     private Dictionary<string, List<Card>> Dealer { get; set; }
 
     private async Task NewGame()
     {
         Dealer = await cardService.CreateGameDictionary();
-        GameNotStarted = false;
+        BeforeGame = false;
         StateHasChanged();
     }
 
