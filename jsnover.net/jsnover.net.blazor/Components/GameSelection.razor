@@ -1,0 +1,29 @@
+﻿@page "/gameselection"
+
+@using Constants.Game
+@inject NavigationManager nav
+
+<div class="rounded shadow-border p-5 GameBoard">
+    <div style="height:20%;width:90%;text-align:center;">
+        <h2>What kind of game do you want to play?</h2><br />
+        <h3>Make selection below.</h3>
+    </div>
+    <div class="row" style="height:80%;width90%;">
+        <div class="col" style="display:flex;align-items:center;text-align:center">
+            <div class="border border-dark" style="height:95%;width:80%;margin:auto" @onclick='(() => nav.NavigateTo("/cardgames"))'>
+                Card Games <br />
+                <img src="@SolitaireImages.BacokOfCard" />
+            </div>            
+        </div>
+        <div class="col" style="display:flex;align-items:center;text-align:center">
+            <div class="border border-dark" style="height:95%;width:80%;margin:auto">
+                Not Card Games
+            </div>            
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+}
