@@ -4,19 +4,17 @@
 @inject NavigationManager nav
 
 <div class="rounded shadow-border p-5 GameBoard">
-    <div style="height:20%;width:90%;text-align:center;">
-        <h2>Choose a card game!</h2><br />
-    </div>
     <div class="row" style="height:80%;width90%;">
         <div class="col" style="display:flex;align-items:center;text-align:center">
             <div class="border border-dark" style="height:95%;width:80%;margin:auto" @onclick='(() => nav.NavigateTo("/solitaire"))'>
                 Solitaire <br />
-                <img height="80%" width="80%" src="../images/SolitaireImage.png" />
+                <img class="rounded" height="70%" width="70%" src="../images/SolitaireImage.png" />
             </div>
         </div>
         <div class="col" style="display:flex;align-items:center;text-align:center">
-            <div class="border border-dark" style="height:95%;width:80%;margin:auto">
-                Black Jack
+            <div class="border border-dark" style="height:95%;width:80%;margin:auto" @onclick='(() => nav.NavigateTo("/blackjack"))'>
+                Black Jack <br />
+                <img class="rounded" height="70%" width="70%" src="../images/SolitaireImage.png" />
             </div>
         </div>
     </div>

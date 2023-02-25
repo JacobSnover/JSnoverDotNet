@@ -1,0 +1,18 @@
+﻿@using jsnover.net.blazor.Models
+@using Constants.Game
+
+
+<div class="rounded shadow-border p-5 GameBoard">
+    <div class="col-12 row">
+        <div class="col" style="height:20vh">
+            <img height="100%" width="70%" style="position:absolute;z-index:0;left:20%;" src="@SolitaireImages.BacokOfCard" />
+            <img height="100%" width="70%" style="position:absolute;z-index:0;left:30%;" src="@SolitaireImages.BacokOfCard" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Dictionary<string, List<Card>> Dealer { get; set; }
+
+}
