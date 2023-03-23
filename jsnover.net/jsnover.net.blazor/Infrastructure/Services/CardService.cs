@@ -59,9 +59,9 @@ namespace jsnover.net.blazor.Infrastructure.Services
             await DrawAllCards();            
 
             GameDictionary = new Dictionary<string, List<Card>>();
+            GameDictionary.Add("Deck", await DrawCards(52));
             GameDictionary.Add("Player", new List<Card>());
-            GameDictionary.Add("HomeDeck", await DrawCards(52));
-            GameDictionary.Add("Deal", new());
+            GameDictionary.Add("Dealer", new());
             GameDictionary.Add("DiscardPile", new());
 
             return GameDictionary;

@@ -6,24 +6,24 @@
     <div class="col-12 row">
         <div class="col-4">
             <div class="row pad-20">
-                <button class="btn btn-primary">
+                <button class="btn btn-primary" @onclick='(async() => await Actions("hit"))'>
                     Hit
                 </button>
-                <button class="btn btn-primary">
+                <button class="btn btn-primary" @onclick='(async() => await Actions("stand"))'>
                     Stand
                 </button>
-                <button class="btn btn-danger">
+                <button class="btn btn-danger" @onclick='(async() => await Actions("surrender"))'>
                     Surrender
                 </button>
             </div>
             <div class="row pad-20">
-                <button class="btn btn-primary">
+                <button class="btn btn-primary" @onclick='(async() => await Actions("double"))'>
                     Double
                 </button>
-                <button class="btn btn-primary">
+                <button class="btn btn-primary" @onclick='(async() => await Actions("split"))'>
                     Split
                 </button>
-                <button class="btn btn-danger">
+                <button class="btn btn-danger" @onclick='(async() => await Actions("deal"))'>
                     Deal
                 </button>
             </div>
@@ -48,20 +48,55 @@
 @code
 {
     [Parameter]
-    public Dictionary<string, List<Card>> Dealer { get; set; } // indexes Player, HomeDeck, Deal, DiscardPile
+    public Dictionary<string, List<Card>> Decks { get; set; } // indexes Deck, Player, Dealer, DiscardPile
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Decks["Player"] = await DrawCards("Deck", 2);
+        Decks["Dealer"] = await DrawCards("Deck", 2);
+    }
 
     //draw cards
-    public void DrawCards(string deck, int count)
+    public async Task<List<Card>> DrawCards(string deckId, int count)
     {
         // draw cards from deck
+        var cards = new List<Card>();
+        var deck = Decks[deckId];
+        for (int i = 0; i < count; i++)
+        {
+            cards.Add(deck[deck.Count - 1]);
+            deck.RemoveAt(deck.Count - 1);
+        }
+
+        return cards;
     }
 
     //actions
-    public void Actions(string action)
+    public async Task Actions(string action)
     {
+        
         switch (action)
         {
             case "hit":
+                Console.WriteLine(action);
+                break;
+            case "stand":
+                Console.WriteLine(action);
+                break;
+            case "surrender":
+                Console.WriteLine(action);
+                break;
+            case "double":
+                Console.WriteLine(action);
+                break;
+            case "split":
+                Console.WriteLine(action);
+                break;
+            case "deal":
+                Console.WriteLine(action);
+                break;
+            default:
+                Console.WriteLine(action);
                 break;
         }
     }

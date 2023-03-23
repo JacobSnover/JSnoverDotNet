@@ -10,7 +10,7 @@
 }
 else
 {
-    <BlackJackBoard Dealer="Dealer">
+    <BlackJackBoard Decks="Decks">
 
     </BlackJackBoard>
 }
@@ -18,11 +18,11 @@ else
 
 @code {
     private bool BeforeGame { get; set; } = true;
-    private Dictionary<string, List<Card>> Dealer { get; set; } = new();
+    private Dictionary<string, List<Card>> Decks { get; set; } = new();
 
     private async Task NewGame()
     {
-        //Dealer = await cardService.CreateBlackJackDictionary();
+        Decks = await cardService.CreateBlackJackDictionary();
         BeforeGame = false;
         StateHasChanged();
     }
