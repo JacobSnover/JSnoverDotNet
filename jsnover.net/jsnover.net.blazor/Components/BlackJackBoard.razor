@@ -12,17 +12,17 @@
                 <button class="btn btn-primary" @onclick='(async() => await Actions("stand"))'>
                     Stand
                 </button>
-                <button class="btn btn-danger" @onclick='(async() => await Actions("surrender"))'>
-                    Surrender
-                </button>
+                @*<button class="btn btn-danger" @onclick='(async() => await Actions("surrender"))'>
+                Surrender
+                </button>*@
             </div>
             <div class="row pad-20">
-                <button class="btn btn-primary" @onclick='(async() => await Actions("double"))'>
-                    Double
+                @*<button class="btn btn-primary" @onclick='(async() => await Actions("double"))'>
+                Double
                 </button>
                 <button class="btn btn-primary" @onclick='(async() => await Actions("split"))'>
-                    Split
-                </button>
+                Split
+                </button>*@
                 <button class="btn btn-danger" @onclick='(async() => await Actions("deal"))'>
                     Deal
                 </button>
@@ -31,16 +31,41 @@
         <div class="col-8">
             <div class="col-12 row pad-20">
                 <div class="col" style="height:20vh">
-                    <img height="100%" width="15%" style="position:absolute;z-index:0;left:20%;" src="@SolitaireImages.BacokOfCard" />
-                    <img height="100%" width="15%" style="position:absolute;z-index:1;left:25%;" src="@SolitaireImages.BacokOfCard" />
+                    @for (int i = 0; i < Decks["Dealer"].Count; i++)
+                    {
+                        @if (dontReveal && i == 0)
+                        {
+                            <img height="100%" width="15%" style="position:absolute;z-index:@i;left:@(20 + (i * 5))%;" src="@Decks["Dealer"][i].back" />
+                        }
+                        else
+                        {
+                            <img height="100%" width="15%" style="position:absolute;z-index:@i;left:@(20 + (i * 5))%;" src="@Decks["Dealer"][i].image" />
+                        }
+                    }
+                    @if (!dontReveal)
+                    {
+                        <h1>@dealerSum</h1>
+                    }
                 </div>
             </div>
             <div class="col-12 row pad-20">
                 <div class="col" style="height:20vh">
-                    <img height="100%" width="15%" style="position:absolute;z-index:0;left:20%;" src="@SolitaireImages.BacokOfCard" />
-                    <img height="100%" width="15%" style="position:absolute;z-index:1;left:25%;" src="@SolitaireImages.BacokOfCard" />
+                    @for (int i = 0; i < Decks["Player"].Count; i++)
+                    {
+                        <img height="100%" width="15%" style="position:absolute;z-index:@i;left:@(20 + (i * 5))%;" src="@Decks["Player"][i].image" />
+                    }
+                    @if (!dontReveal)
+                    {
+                        <h1>@playerSum</h1>
+                    }
                 </div>
             </div>
+        </div>
+        <div>
+            @if (!dontReveal)
+            {
+                <h1>@RulingMessage</h1>
+            }
         </div>
     </div>
 </div>
@@ -48,40 +73,44 @@
 @code
 {
     [Parameter]
-    public Dictionary<string, List<Card>> Decks { get; set; } // indexes Deck, Player, Dealer, DiscardPile
+    public Dictionary<string, List<Card>> Decks { get; set; } // indexes Deck, Player, Dealer, Discard
+    public bool dontReveal { get; set; } = true;
+    public string RulingMessage { get; set; }
+    public int dealerSum { get; set; }
+    public int playerSum { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
-        Decks["Player"] = await DrawCards("Deck", 2);
-        Decks["Dealer"] = await DrawCards("Deck", 2);
+        if (Decks["Player"].Count == 0)
+        {
+            await DrawCards("Dealer", 2);
+            await DrawCards("Player", 2);
+        }
     }
 
     //draw cards
-    public async Task<List<Card>> DrawCards(string deckId, int count)
+    public async Task DrawCards(string deckId, int count)
     {
-        // draw cards from deck
-        var cards = new List<Card>();
-        var deck = Decks[deckId];
+        var deck = Decks["Deck"];
         for (int i = 0; i < count; i++)
         {
-            cards.Add(deck[deck.Count - 1]);
+            Decks[deckId].Add(deck[deck.Count - 1]);
             deck.RemoveAt(deck.Count - 1);
         }
-
-        return cards;
     }
 
     //actions
     public async Task Actions(string action)
     {
-        
         switch (action)
         {
             case "hit":
-                Console.WriteLine(action);
+                await DrawCards("Player", 1);
+                await Judge();
                 break;
             case "stand":
-                Console.WriteLine(action);
+                dontReveal = false;
+                await Judge();
                 break;
             case "surrender":
                 Console.WriteLine(action);
@@ -93,11 +122,143 @@
                 Console.WriteLine(action);
                 break;
             case "deal":
-                Console.WriteLine(action);
+                await Deal();
                 break;
             default:
                 Console.WriteLine(action);
                 break;
+        }
+        StateHasChanged();
+    }
+
+    private async Task Deal()
+    {
+        await Discard();
+        if(Decks["Deck"].Count < 12)
+        {
+            for (int i = 0; i < Decks["Discard"].Count; i++)
+            {
+                Decks["Deck"]
+                .Insert(
+                    new Random().Next(Decks["Deck"].Count),
+                    Decks["Discard"][Decks["Discard"].Count - 1]);
+                Decks["Discard"].RemoveAt(Decks["Discard"].Count - 1);
+            }
+        }
+        if (Decks["Player"].Count == 0)
+        {
+            await DrawCards("Dealer", 2);
+            await DrawCards("Player", 2);
+        }
+        
+        await ResetSums();
+        await Ruling();
+        dontReveal = true;
+        StateHasChanged();
+    }
+
+    private async Task Discard()
+    {
+        var playerCount = Decks["Player"].Count;
+        for (int i = 0; i < playerCount; i++)
+        {
+            Decks["Discard"].Add(Decks["Player"][Decks["Player"].Count - 1]);
+            Decks["Player"].RemoveAt(Decks["Player"].Count - 1);
+            if (Decks["Dealer"].Count > 0)
+            {
+                Decks["Discard"].Add(Decks["Dealer"][Decks["Dealer"].Count - 1]);
+                Decks["Dealer"].RemoveAt(Decks["Dealer"].Count - 1);
+            }
+        }        
+    }
+
+    private async Task Judge()
+    {
+        bool isPlayer;
+        foreach (var card in Decks["Dealer"])
+        {
+            dealerSum = await CardValue(card, dealerSum, isPlayer = false);
+        }
+        foreach (var card in Decks["Player"])
+        {
+            playerSum = await CardValue(card, playerSum, isPlayer = true);
+        }
+        await Ruling();
+        await ResetSums();
+    }
+
+    private async Task ResetSums()
+    {
+        dealerSum = 0;
+        playerSum = 0;
+    }
+
+    private async Task Ruling()
+    {
+        if (playerSum == 0 && dealerSum == 0)
+        {
+            RulingMessage = "";    
+        }
+        else if (playerSum == 21)
+        {
+            RulingMessage = "Black Jack!!";
+        }
+        else if (playerSum < 21 && playerSum > dealerSum)
+        {
+            RulingMessage = "You Win!!";
+        }
+        else if (dealerSum == 21 && playerSum == 21)
+        {
+            RulingMessage = "Tie game, both you and the dealer have Black Jack!!";
+        }
+        else if (dealerSum <= 21 && playerSum < dealerSum)
+        {
+            RulingMessage = "Sorry this time you lost";
+        }
+        else if (playerSum > 21)
+        {
+            RulingMessage = "BUST";
+            dontReveal = false;
+        }
+        else if (playerSum < 22 && dealerSum < 22 && playerSum == dealerSum)
+        {
+            RulingMessage = "tie game";
+        }
+    }
+
+    private async Task<int> CardValue(Card card, int sum, bool isPlayer)
+    {
+        switch (card.value)
+        {
+            case "2":
+                return sum + 2;
+            case "3":
+                return sum + 3;
+            case "4":
+                return sum + 4;
+            case "5":
+                return sum + 5;
+            case "6":
+                return sum + 6;
+            case "7":
+                return sum + 7;
+            case "8":
+                return sum + 8;
+            case "9":
+                return sum + 9;
+            case "10":
+                return sum + 10;
+            case "QUEEN":
+            case "KING":
+            case "JACK":
+                return sum + 10;
+            case "ACE":
+                if (isPlayer && (sum + 11) > 21)
+                    return sum + 1;
+                else
+                    return sum + 11;
+            default:
+                return 0;
         }
     }
 }
