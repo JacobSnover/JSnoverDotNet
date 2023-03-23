@@ -5,7 +5,7 @@
 <div class="rounded shadow-border p-5 GameBoard">
     <div class="col-12 row">
         <div class="col-4">
-            <div class="row">
+            <div class="row pad-20">
                 <button class="btn btn-primary">
                     Hit
                 </button>
@@ -16,7 +16,7 @@
                     Surrender
                 </button>
             </div>
-            <div class="row">
+            <div class="row pad-20">
                 <button class="btn btn-primary">
                     Double
                 </button>
@@ -29,13 +29,13 @@
             </div>
         </div>
         <div class="col-8">
-            <div class="col-12 row">
+            <div class="col-12 row pad-20">
                 <div class="col" style="height:20vh">
                     <img height="100%" width="15%" style="position:absolute;z-index:0;left:20%;" src="@SolitaireImages.BacokOfCard" />
                     <img height="100%" width="15%" style="position:absolute;z-index:1;left:25%;" src="@SolitaireImages.BacokOfCard" />
                 </div>
             </div>
-            <div class="col-12 row">
+            <div class="col-12 row pad-20">
                 <div class="col" style="height:20vh">
                     <img height="100%" width="15%" style="position:absolute;z-index:0;left:20%;" src="@SolitaireImages.BacokOfCard" />
                     <img height="100%" width="15%" style="position:absolute;z-index:1;left:25%;" src="@SolitaireImages.BacokOfCard" />
@@ -45,8 +45,24 @@
     </div>
 </div>
 
-@code {
+@code
+{
     [Parameter]
-    public Dictionary<string, List<Card>> Dealer { get; set; }
+    public Dictionary<string, List<Card>> Dealer { get; set; } // indexes Player, HomeDeck, Deal, DiscardPile
 
+    //draw cards
+    public void DrawCards(string deck, int count)
+    {
+        // draw cards from deck
+    }
+
+    //actions
+    public void Actions(string action)
+    {
+        switch (action)
+        {
+            case "hit":
+                break;
+        }
+    }
 }
