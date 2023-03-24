@@ -44,7 +44,7 @@
                     }
                     @if (!dontReveal)
                     {
-                        <h1>@dealerSum</h1>
+                        <h1>@dealerSumLastGame</h1>
                     }
                 </div>
             </div>
@@ -56,7 +56,7 @@
                     }
                     @if (!dontReveal)
                     {
-                        <h1>@playerSum</h1>
+                        <h1>@playerSumLastGame</h1>
                     }
                 </div>
             </div>
@@ -78,6 +78,8 @@
     public string RulingMessage { get; set; }
     public int dealerSum { get; set; }
     public int playerSum { get; set; }
+    public int dealerSumLastGame { get; set; }
+    public int playerSumLastGame { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -150,7 +152,7 @@
             await DrawCards("Dealer", 2);
             await DrawCards("Player", 2);
         }
-        
+
         await ResetSums();
         await Ruling();
         dontReveal = true;
@@ -178,10 +180,12 @@
         foreach (var card in Decks["Dealer"])
         {
             dealerSum = await CardValue(card, dealerSum, isPlayer = false);
+            dealerSumLastGame = dealerSum;
         }
         foreach (var card in Decks["Player"])
         {
             playerSum = await CardValue(card, playerSum, isPlayer = true);
+            playerSumLastGame = playerSum;
         }
         await Ruling();
         await ResetSums();
