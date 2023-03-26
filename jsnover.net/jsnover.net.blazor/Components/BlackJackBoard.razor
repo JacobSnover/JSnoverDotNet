@@ -4,42 +4,46 @@
 
 <div class="rounded shadow-border p-5 GameBoard">
     <div class="col-12 row">
-        <div class="col-4">
+        <div class="col-12">
             <div class="row pad-20">
-                <button class="btn btn-primary" @onclick='(async() => await Actions("hit"))'>
-                    Hit
-                </button>
-                <button class="btn btn-primary" @onclick='(async() => await Actions("stand"))'>
-                    Stand
-                </button>
+                <div class="col">
+                    <button class="btn btn-primary" @onclick='(async() => await Actions("hit"))' disabled="@disabled">
+                        Hit
+                    </button>
+                </div>
+                <div class="col">
+                    <button class="btn btn-primary" @onclick='(async() => await Actions("stand"))' disabled="@disabled">
+                        Stand
+                    </button>
+                </div>
                 @*<button class="btn btn-danger" @onclick='(async() => await Actions("surrender"))'>
                 Surrender
                 </button>*@
-            </div>
-            <div class="row pad-20">
                 @*<button class="btn btn-primary" @onclick='(async() => await Actions("double"))'>
                 Double
                 </button>
                 <button class="btn btn-primary" @onclick='(async() => await Actions("split"))'>
                 Split
                 </button>*@
-                <button class="btn btn-danger" @onclick='(async() => await Actions("deal"))'>
-                    Deal
-                </button>
+                <div class="col">
+                    <button class="btn btn-danger" @onclick='(async() => await Actions("deal"))'>
+                        Deal
+                    </button>
+                </div>                
             </div>
         </div>
-        <div class="col-8">
+        <div class="col-12">
             <div class="col-12 row pad-20">
                 <div class="col" style="height:20vh">
                     @for (int i = 0; i < Decks["Dealer"].Count; i++)
                     {
                         @if (dontReveal && i == 0)
                         {
-                            <img height="100%" width="15%" style="position:absolute;z-index:@i;left:@(20 + (i * 5))%;" src="@Decks["Dealer"][i].back" />
+                            <img style="position:absolute;z-index:@i;left:@(20 + (i * 10))%;" src="@Decks["Dealer"][i].back" class="cardBlackJack" />
                         }
                         else
                         {
-                            <img height="100%" width="15%" style="position:absolute;z-index:@i;left:@(20 + (i * 5))%;" src="@Decks["Dealer"][i].image" />
+                            <img style="position:absolute;z-index:@i;left:@(20 + (i * 10))%;" src="@Decks["Dealer"][i].image" class="cardBlackJack" />
                         }
                     }
                     @if (!dontReveal)
@@ -52,7 +56,7 @@
                 <div class="col" style="height:20vh">
                     @for (int i = 0; i < Decks["Player"].Count; i++)
                     {
-                        <img height="100%" width="15%" style="position:absolute;z-index:@i;left:@(20 + (i * 5))%;" src="@Decks["Player"][i].image" />
+                        <img style="position:absolute;z-index:@i;left:@(20 + (i * 10))%;" src="@Decks["Player"][i].image" class="cardBlackJack" />
                     }
                     @if (!dontReveal)
                     {
@@ -60,12 +64,12 @@
                     }
                 </div>
             </div>
-        </div>
-        <div>
-            @if (!dontReveal)
-            {
-                <h1>@RulingMessage</h1>
-            }
+            <div>
+                @if (!dontReveal)
+                {
+                    <h1 style="color:@colorStyle">@RulingMessage</h1>
+                }
+            </div>
         </div>
     </div>
 </div>
@@ -76,6 +80,9 @@
     public Dictionary<string, List<Card>> Decks { get; set; } // indexes Deck, Player, Dealer, Discard
     public bool dontReveal { get; set; } = true;
     public string RulingMessage { get; set; }
+    public string colorStyle { get; set; }
+    public bool disabled { get; set; } = false;
+    public bool onHit { get; set; } = false;
     public int dealerSum { get; set; }
     public int playerSum { get; set; }
     public int dealerSumLastGame { get; set; }
@@ -107,11 +114,13 @@
         switch (action)
         {
             case "hit":
+                onHit = true;
                 await DrawCards("Player", 1);
                 await Judge();
                 break;
             case "stand":
                 dontReveal = false;
+                onHit = false;
                 await Judge();
                 break;
             case "surrender":
@@ -136,7 +145,7 @@
     private async Task Deal()
     {
         await Discard();
-        if(Decks["Deck"].Count < 12)
+        if (Decks["Deck"].Count < 12)
         {
             for (int i = 0; i < Decks["Discard"].Count; i++)
             {
@@ -156,6 +165,7 @@
         await ResetSums();
         await Ruling();
         dontReveal = true;
+        disabled = false;
         StateHasChanged();
     }
 
@@ -171,7 +181,7 @@
                 Decks["Discard"].Add(Decks["Dealer"][Decks["Dealer"].Count - 1]);
                 Decks["Dealer"].RemoveAt(Decks["Dealer"].Count - 1);
             }
-        }        
+        }
     }
 
     private async Task Judge()
@@ -199,35 +209,48 @@
 
     private async Task Ruling()
     {
-        if (playerSum == 0 && dealerSum == 0)
+        if (onHit)
         {
-            RulingMessage = "";    
+            if (playerSum > 21)
+            {
+                await SetRuling("BUST", "darkred", true);
+            }
         }
-        else if (playerSum == 21)
+        else
         {
-            RulingMessage = "Black Jack!!";
+            if (playerSum == 0 && dealerSum == 0)
+            {
+                await SetRuling("", "black", false);
+            }
+            else if (playerSum == 21)
+            {
+                await SetRuling("Black Jack!!", "darkolivegreen", true);
+            }
+            else if (playerSum < 21 && playerSum > dealerSum)
+            {
+                await SetRuling("You Win!!", "blue", true);
+            }
+            else if (dealerSum == 21 && playerSum == 21)
+            {
+                await SetRuling("Black Jack!!", "black", true);
+            }
+            else if (dealerSum <= 21 && playerSum < dealerSum)
+            {
+                await SetRuling("You lost", "black", true);
+            }
+            else if (playerSum < 22 && dealerSum < 22 && playerSum == dealerSum)
+            {
+                await SetRuling("Tie game", "black", true);
+            }
         }
-        else if (playerSum < 21 && playerSum > dealerSum)
-        {
-            RulingMessage = "You Win!!";
-        }
-        else if (dealerSum == 21 && playerSum == 21)
-        {
-            RulingMessage = "Tie game, both you and the dealer have Black Jack!!";
-        }
-        else if (dealerSum <= 21 && playerSum < dealerSum)
-        {
-            RulingMessage = "Sorry this time you lost";
-        }
-        else if (playerSum > 21)
-        {
-            RulingMessage = "BUST";
-            dontReveal = false;
-        }
-        else if (playerSum < 22 && dealerSum < 22 && playerSum == dealerSum)
-        {
-            RulingMessage = "tie game";
-        }
+    }
+
+    private async Task SetRuling(string message, string color, bool disable)
+    {
+        RulingMessage = message;
+        colorStyle = color;
+        disabled = disable;
+        dontReveal = false;
     }
 
     private async Task<int> CardValue(Card card, int sum, bool isPlayer)
