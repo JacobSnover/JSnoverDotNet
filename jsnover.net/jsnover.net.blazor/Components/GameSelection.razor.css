@@ -1,0 +1,9 @@
+﻿body {
+}
+
+.GameBoard {
+    background-color: darkgreen;
+    width: 100%;
+    height: 90vh;
+    border-radius: .2rem;
+}

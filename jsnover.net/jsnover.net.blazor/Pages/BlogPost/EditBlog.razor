@@ -155,8 +155,6 @@
         {
             editModel = await BlogEditModel.MapToBlogPageModel(Id);
 
-            //editModel.Blog.Body = editModel.Blog.Body?.Replace("<br />", "\n");
-
             published = (bool)editModel.Blog.Published ? false : true;
 
             IsPublished();

@@ -1,0 +1,48 @@
+﻿body {
+}
+
+.GameBoard {
+    background-color: forestgreen;
+    width: 100%;
+    height: 90vh;
+}
+
+.cardBlackJack {
+    height: 100%;
+    width: 15%;
+}
+
+@media(max-width: 1400px) {
+    .cardBlackJack {
+        height: 100%;
+        width: 20%;
+    }
+}
+
+@media(max-width: 1200px) {
+    .cardBlackJack {
+        height: 100%;
+        width: 30%;
+    }
+}
+
+@media(max-width: 992px) {
+    .cardBlackJack {
+        height: 100%;
+        width: 40%;
+    }
+}
+
+@media(max-width: 768px) {
+    .cardBlackJack {
+        height: 100%;
+        width: 40%;
+    }
+}
+
+@media(max-width: 576px) {
+    .cardBlackJack {
+        height: 100%;
+        width: 90%;
+    }
+}

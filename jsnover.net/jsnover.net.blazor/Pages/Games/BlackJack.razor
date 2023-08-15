@@ -1,30 +1,29 @@
-﻿@page "/solitaire"
+﻿@page "/BlackJack"
+
 @inject jsnover.net.blazor.Infrastructure.Services.CardService cardService
 @using jsnover.net.blazor.Models
 @using jsnover.net.blazor.Components
 
 @if (BeforeGame)
-{    
-    <h1>Check Back Soon!</h1>
-    @*<button class="btn btn-primary" @onclick="NewGame">New Game</button>*@
+{
+    <button class="btn btn-primary" @onclick="NewGame">New Game</button>
 }
 else
 {
-    <SolitaireBoard Dealer="Dealer">
+    <BlackJackBoard Decks="Decks">
 
-    </SolitaireBoard>
+    </BlackJackBoard>
 }
 
 
 @code {
     private bool BeforeGame { get; set; } = true;
-    private Dictionary<string, List<Card>> Dealer { get; set; }
+    private Dictionary<string, List<Card>> Decks { get; set; } = new();
 
     private async Task NewGame()
     {
-        Dealer = await cardService.CreateSolitaireDictionary();
+        Decks = await cardService.CreateBlackJackDictionary();
         BeforeGame = false;
         StateHasChanged();
     }
-
 }

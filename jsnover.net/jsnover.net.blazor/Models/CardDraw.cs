@@ -2,9 +2,8 @@
 
 namespace jsnover.net.blazor.Models
 {
-    public class CardDraw : NewDeck
+    public class CardDraw
     {
-        public List<Card> cards { get; set; }
-                
+        public List<Card> cards { get; set; }                
     }
 }
