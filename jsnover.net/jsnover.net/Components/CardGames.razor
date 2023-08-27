@@ -1,0 +1,25 @@
+﻿@page "/cardgames"
+
+@using Constants.Game
+@inject NavigationManager nav
+
+<div class="rounded shadow-border p-5 GameBoard">
+    <div class="row" style="height:80%;width90%;">
+        <div class="col" style="display:flex;align-items:center;text-align:center">
+            <div class="border border-dark" style="height:95%;width:80%;margin:auto" @onclick='(() => nav.NavigateTo("/solitaire"))'>
+                Solitaire <br />
+                <img class="rounded" height="70%" width="70%" src="../images/SolitaireImage.png" />
+            </div>
+        </div>
+        <div class="col" style="display:flex;align-items:center;text-align:center">
+            <div class="border border-dark" style="height:95%;width:80%;margin:auto" @onclick='(() => nav.NavigateTo("/blackjack"))'>
+                Black Jack <br />
+                <img class="rounded" height="70%" width="70%" src="../images/BlackJackImage.png" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    
+}

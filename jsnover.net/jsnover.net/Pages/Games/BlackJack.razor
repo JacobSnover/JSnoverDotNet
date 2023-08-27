@@ -1,0 +1,29 @@
+﻿@page "/BlackJack"
+
+@inject jsnover.net.Infrastructure.Services.CardService cardService
+@using jsnover.net.Models
+@using jsnover.net.Components
+
+@if (BeforeGame)
+{
+    <button class="btn btn-primary" @onclick="NewGame">New Game</button>
+}
+else
+{
+    <BlackJackBoard Decks="Decks">
+
+    </BlackJackBoard>
+}
+
+
+@code {
+    private bool BeforeGame { get; set; } = true;
+    private Dictionary<string, List<Card>> Decks { get; set; } = new();
+
+    private async Task NewGame()
+    {
+        Decks = await cardService.CreateBlackJackDictionary();
+        BeforeGame = false;
+        StateHasChanged();
+    }
+}

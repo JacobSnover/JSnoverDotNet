@@ -1,0 +1,20 @@
+﻿Scaffold-DbContext “Server=<ServerName>;Database=<Database Name>;Integrated Security=True” Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Force
+
+Update-Database -Context ApplcationDbContext
+
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    if (!optionsBuilder.IsConfigured)
+    {
+        var builder = new ConfigurationBuilder();
+        builder.AddJsonFile("appsettings.json", optional: false);
+
+        var configuration = builder.Build();
+
+        var connectionString = configuration.GetConnectionString("DefaultConnection").ToString();
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlServer(connectionString);
+        }
+    }
+}

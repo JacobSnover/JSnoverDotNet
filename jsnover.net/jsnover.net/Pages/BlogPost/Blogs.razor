@@ -1,0 +1,280 @@
+﻿@page "/Blogs"
+@page "/Blogs/{type}/{parameter}"
+@using Microsoft.AspNetCore.Identity
+@using System.Text.RegularExpressions
+@using Constants
+@using jsnover.net.Models
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+@inject NavigationManager nav
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject Infrastructure.Services.BlogService BlogService
+
+<div class="border-bottom margin-bttm-20">
+    <div class="form-inline margin-bttm-20">
+        @if (SearchItems.TryGetValue(Keywords.Title, out _))
+        {
+            <div class="col-sm-4 form-group">
+                <label class="text-white col-sm-10">Title Search</label>
+                <select class="form-control col-sm-10" @onchange="OnValueChanged" title="Title search">
+                    @foreach (var title in SearchItems[Keywords.Title] ?? new List<string>())
+                    {
+                        <option value="@title{-title-}"> @title</option>
+
+                    }
+                </select>
+            </div>
+        }
+        @if (SearchItems.TryGetValue(Keywords.Topic, out _))
+        {
+            <div class="col-sm-4 form-group">
+                <label class="text-white col-sm-10">Topic Search</label>
+                <select class="form-control col-sm-10" @onchange="OnValueChanged" title="Topic search">
+                    @foreach (var topic in SearchItems[Keywords.Topic] ?? new List<string>())
+                    {
+                        <option value="@topic{-topic-}"> @topic</option>
+
+                    }
+                </select>
+            </div>
+        }
+        @if (SearchItems.TryGetValue(Keywords.Tags, out _))
+        {
+            <div class="col-sm-4 form-group">
+                <label class="text-white col-sm-10">Tag Search</label>
+                <select class="form-control col-sm-10" @onchange="OnValueChanged" title="Tag search">
+                    @foreach (var tag in SearchItems[Keywords.Tags] ?? new List<string>())
+                    {
+                        <option value="@tag{-tag-}"> @tag</option>
+
+                    }
+                </select>
+            </div>
+        }
+    </div>
+
+    <table class="table-bordered table-responsive-lg blog-background rounded-lg shadow-border-sm">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Title</th>
+                <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Submit Date</th>                
+                <AuthorizeView>
+                    <Authorized>
+                        <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Action</th>
+                        <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Likes</th>
+                        <th scope="col" class="p-3 pl-3 text-center font-weight-bold border-dark">Views</th>
+                    </Authorized>
+                </AuthorizeView>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var blog in BlogModels?.BlogDisplayModels ?? new List<DataTransferObjects.BlogModels.BlogDisplayModel>())
+            {
+                var id = blog.BlogId;
+
+                if ((bool)blog.Published)
+                {
+                    <tr>
+                        <td class="pr-3 pl-3 border-dark">                            
+                            <button @onclick="@(e => ViewBlog(id))" class="aLink font-weight-bold">@blog.Title</button>
+                        </td>
+                        <td class="p-3 pl-3 text-white border-dark">@blog.SubmitDate.ToShortDateString()</td>
+
+                        <AuthorizeView>
+                            <Authorized>
+                                <td class="p-3 pl-3 border-dark">
+                                    @{                                        
+                                        <button @onclick="@(e => EditBlog(id))" class="btn btn-primary oi oi-pencil shadow-border-sm text-white"></button>
+                                    }
+                                </td>
+
+                                <td class="pr-3 pl-3 border-dark">
+                                    @blog.Likes
+                                </td>
+                                <td class="pr-3 pl-3 border-dark">
+                                    @blog.Views
+                                </td>
+                            </Authorized>
+                            <NotAuthorized>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<AuthorizeView>
+    <Authorized>
+        <h3><strong>Un-Published Blogs</strong></h3>
+        <div>
+            <table class="table-bordered table-responsive-lg blog-background rounded-lg">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col" class="p-3 pl-3 text-center">Title</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Topic</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Tags</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Submit Date</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Action</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Likes</th>
+                        <th scope="col" class="p-3 pl-3 text-center">Views</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var blog in BlogModels.BlogDisplayModels ?? new List<DataTransferObjects.BlogModels.BlogDisplayModel>())
+                    {
+                        if (!(bool)blog.Published)
+                        {
+                            <tr>
+                                <td class="pr-3 pl-3">@blog.Title</td>
+                                <td class="pr-3 pl-3">@blog.Topic</td>
+                                <td class="pr-3 pl-3">
+                                    @foreach (var tag in blog.Tags)
+                                    {
+                                        <span><strong>@tag.Name,</strong> <br /></span>
+                                    }
+                                </td>
+                                <td class="p-3 pl-3">@blog.SubmitDate.ToShortDateString()</td>
+                                <td class="p-3 pl-3">
+                                    @{
+                                        var id = blog.BlogId;
+                                        <button @onclick="@(e => ViewBlog(id))" class="btn btn-success oi oi-eye"><h6>View</h6></button>
+
+                                        <button @onclick="@(e => EditBlog(id))" class="btn btn-primary oi oi-pencil"><h6>Edit</h6></button>
+                                    }
+                                </td>
+
+                                <td class="pr-3 pl-3">
+                                    @blog.Likes
+                                </td>
+                                <td class="pr-3 pl-3">
+                                    @blog.Views
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+<jsnover.net.Components.Footer />
+
+@code {
+    [Parameter]
+    public string type { get; set; }
+
+    [Parameter]
+    public string parameter { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private DataTransferObjects.BlogModels.BlogListModel BlogModels = new DataTransferObjects.BlogModels.BlogListModel();
+
+    private Dictionary<string, List<string>> SearchItems = new Dictionary<string, List<string>>();
+
+    private bool gotSearchItems = false;
+
+    protected override async void OnInitialized()
+    {
+        if (!SearchIsNull() && BlogModels?.BlogDisplayModels is null)
+        {
+            BlogModels.BlogDisplayModels = DataTransferObjects.BlogModels.BlogDisplayModel
+                    .MapToList(await BlogService.SearchBlogs(type, parameter));
+        }
+    }
+
+    private bool SearchIsNull()
+    {
+        return (type is null) || (parameter is null);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (SearchIsNull())
+            {
+                BlogModels.BlogDisplayModels = await BlogService.GetBlogs();
+            }
+            BlogModels.BlogDisplayModels = BlogModels.BlogDisplayModels.OrderByDescending(order => order.SubmitDate).ToList();
+            this.StateHasChanged();
+        }
+
+        if (!gotSearchItems && BlogModels.BlogDisplayModels.Any())
+        {
+            SearchItems.Add(Keywords.Title, BuildList(Keywords.Title));
+            SearchItems.Add(Keywords.Tags, BuildList(Keywords.Tags));
+            SearchItems.Add(Keywords.Topic, BuildList(Keywords.Topic));
+
+            gotSearchItems = true;
+
+            this.StateHasChanged();
+        }
+    }
+
+    private List<string> BuildList(string property)
+    {
+        var tempList = new List<string>();
+
+        var propList = BlogModels.BlogDisplayModels.Select(blog => blog.GetType().GetProperty(property)?.GetValue(blog, null)).ToList();
+
+        if (propList?.ElementAt(KeyValues.ZeroIndex).GetType().Name is Keywords.ListName)
+        {
+            foreach (List<Tag> prop in propList)
+            {
+                tempList.AddRange(prop.Select(tag => tag.Name));
+            }
+            tempList = tempList.Distinct().ToList();
+            tempList.Sort();
+        }
+        else
+        {
+            tempList.AddRange(propList.Select(prop => prop.ToString()).Distinct().ToList());
+            tempList.Sort();
+        }
+
+        return tempList;
+    }
+
+    private Task OnValueChanged(ChangeEventArgs e)
+    {
+        AnyMatches(e.Value);
+
+        return ValueChanged.InvokeAsync(e.Value.ToString());
+    }
+
+    private void AnyMatches(object eventValue)
+    {
+        var searchValue = eventValue.ToString();
+
+        var mc = Regex.Matches(searchValue, @"{-(title|topic|tag)-}$");
+
+        if (mc.Any())
+        {
+            var match = mc.FirstOrDefault();
+            searchValue = Regex.Replace(searchValue, match.Groups[KeyValues.ZeroIndex].Value, string.Empty);
+            SearchBlogs(match.Groups[KeyValues.InnerGroupIndex].Value, searchValue);
+        }
+    }
+
+    private async void SearchBlogs(string type, string parameter)
+    {
+        BlogModels.BlogDisplayModels = DataTransferObjects.BlogModels.BlogDisplayModel
+                    .MapToList(await BlogService.SearchBlogs(type, parameter));
+        this.StateHasChanged();
+    }
+
+    private void EditBlog(int id)
+    {
+        nav.NavigateTo($"EditBlog/{id}");
+    }
+
+    private void ViewBlog(int id)
+    {
+        nav.NavigateTo($"blogview/{id}");
+    }
+}

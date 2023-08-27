@@ -1,5 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager nav
+@using DataTransferObjects.BlogModels
+@using Infrastructure.Services
 
 <div class="sidebar">
     <NavMenu />
@@ -26,14 +28,14 @@
 </div>
 
 @code{
-    private DataTransferObjects.BlogModels.SubscribeModel subscribeModel = new DataTransferObjects.BlogModels.SubscribeModel();
+    private SubscribeModel subscribeModel = new SubscribeModel();
     private string subscribed { get; set; }
     private string uploadError = string.Empty;
     private EditContext editContext;
 
     private async Task<bool> AddSubscriber()
     {
-        var hasSubscribed = await Infrastructure.Services.BlogService.AddSubscriber(subscribeModel.Email);
+        var hasSubscribed = await BlogService.AddSubscriber(subscribeModel.Email);
         if (hasSubscribed)
         {
             subscribed = "Thank you for subscribing!";
@@ -46,7 +48,7 @@
     {
         editContext = new EditContext(subscribeModel);
         var isValid = editContext.Validate();
-        var isValidEmail = Infrastructure.Services.RegexUtilities.IsValidEmail(subscribeModel.Email);
+        var isValidEmail = RegexUtilities.IsValidEmail(subscribeModel.Email);
 
         if (isValid && isValidEmail)
         {

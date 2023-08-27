@@ -1,0 +1,336 @@
+﻿@using jsnover.net.Models
+@using Constants.Game
+@using static Constants.Game.BlackJack
+@using static Constants.Game.General
+
+
+<div class="rounded shadow-border p-5 GameBoard">
+    <div class="col-12 row">
+        <div class="col-12">
+            <div class="row pad-20">
+                <div class="col">
+                    <button class="btn btn-primary" @onclick='(async() => await Actions(Hit))' disabled="@disabled">
+                        Hit
+                    </button>
+                </div>
+                <div class="col">
+                    <button class="btn btn-primary" @onclick='(async() => await Actions(Stand))' disabled="@disabled">
+                        Stand
+                    </button>
+                </div>
+                @*<button class="btn btn-danger" @onclick='(async() => await Actions("surrender"))'>
+                Surrender
+                </button>*@
+                @*<button class="btn btn-primary" @onclick='(async() => await Actions("double"))'>
+                Double
+                </button>
+                <button class="btn btn-primary" @onclick='(async() => await Actions("split"))'>
+                Split
+                </button>*@
+                <div class="col">
+                    <button class="btn btn-danger" @onclick='(async() => await Actions(Deal))'>
+                        Deal
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="col-12 row pad-20">
+                <div class="col" style="height:20vh">
+                    @for (int i = 0; i < Decks[Dealer].Count; i++)
+                    {
+                        @if (dontReveal && i == 0)
+                        {
+                            <img style="position:absolute;z-index:@i;left:@(20 + (i * 10))%;" src="@Decks[Dealer][i].back" class="cardBlackJack" />
+                        }
+                        else
+                        {
+                            <img style="position:absolute;z-index:@i;left:@(20 + (i * 10))%;" src="@Decks[Dealer][i].image" class="cardBlackJack" />
+                        }
+                    }
+                    @if (!dontReveal)
+                    {
+                        <h1>@dealerSumLastGame</h1>
+                    }
+                </div>
+            </div>
+            <div class="col-12 row pad-20">
+                <div class="col" style="height:20vh">
+                    @for (int i = 0; i < Decks[Player].Count; i++)
+                    {
+                        <img style="position:absolute;z-index:@i;left:@(20 + (i * 10))%;" src="@Decks[Player][i].image" class="cardBlackJack" />
+                    }
+                    @if (!dontReveal)
+                    {
+                        <h1>@playerSumLastGame</h1>
+                    }
+                </div>
+            </div>
+            <div>
+                @if (!dontReveal)
+                {
+                    <h1 style="color:@colorStyle">@RulingMessage</h1>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code
+{
+    [Parameter]
+    public Dictionary<string, List<Card>> Decks { get; set; } // indexes Deck, Player, Dealer, Discard
+    public bool dontReveal { get; set; } = true;
+    public string RulingMessage { get; set; }
+    public string colorStyle { get; set; }
+    public bool disabled { get; set; } = false;
+    public bool onHit { get; set; } = false;
+    public bool setup { get; set; } = true;
+    public bool firstDrawOfGame { get; set; } = true;
+    public bool playerHasAce { get; set; } = false;
+    public bool playerAceIsEleven { get; set; } = false;
+    public bool dealerHasAce { get; set; } = false;
+    public bool dealerAceIsEleven { get; set; } = false;
+    public int dealerSum { get; set; }
+    public int playerSum { get; set; }
+    public int dealerSumLastGame { get; set; }
+    public int playerSumLastGame { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Decks[Player].Count == 0)
+        {
+            await DrawCards(Dealer, 2);
+            await DrawCards(Player, 2);
+            await CalculateSum();
+            setup = false;
+        }
+    }
+
+    //draw cards
+    public async Task DrawCards(string deckId, int count)
+    {
+        var deck = Decks[Deck];
+        for (int i = 0; i < count; i++)
+        {
+            Decks[deckId].Add(deck[deck.Count - 1]);
+            deck.RemoveAt(deck.Count - 1);
+        }
+    }
+
+    private async Task Judge()
+    {
+        if (firstDrawOfGame)
+            firstDrawOfGame = false;
+        else
+            await CalculateSum();
+
+        if (!setup)
+        {
+            await Ruling();
+            await ResetSums();
+        }
+    }
+
+    public async Task CalculateSum()
+    {
+        dealerHasAce = false;
+        dealerAceIsEleven = false;
+        playerHasAce = false;
+        playerAceIsEleven = false;
+        foreach (var card in Decks[Dealer])
+        {
+            dealerSum = await CardValue(card, dealerSum, dealerHasAce, dealerAceIsEleven);
+            dealerSumLastGame = dealerSum;
+        }
+        foreach (var card in Decks[Player])
+        {
+            playerSum = await CardValue(card, playerSum, playerHasAce, playerAceIsEleven);
+            playerSumLastGame = playerSum;
+        }
+    }
+    private async Task<int> CardValue(Card card, int sum, bool hasAce, bool aceIsEleven)
+    {
+        switch (card.value)
+        {
+            case "2":
+                return sum + 2;
+            case "3":
+                return sum + 3;
+            case "4":
+                return sum + 4;
+            case "5":
+                return sum + 5;
+            case "6":
+                return sum + 6;
+            case "7":
+                return sum + 7;
+            case "8":
+                return sum + 8;
+            case "9":
+                return sum + 9;
+            case "10":
+                return sum + 10;
+            case "QUEEN":
+            case "KING":
+            case "JACK":
+                return sum + 10;
+            case "ACE":
+                hasAce = true;
+                if ((sum + 11) > 21)
+                {
+                    return sum + 1;
+                }
+                else if (aceIsEleven && sum > 21)
+                {
+                    return sum - 10;
+                }
+                else
+                {
+                    aceIsEleven = true;
+                    return sum + 11;
+                }
+            default:
+                if (aceIsEleven || hasAce && sum > 21)
+                {
+                    return sum - 10;
+                }
+                return 0;
+        }
+    }
+
+    //actions
+    public async Task Actions(string action)
+    {
+        switch (action)
+        {
+            case "Hit":
+                onHit = true;
+                await DrawCards(Player, 1);
+                await Judge();
+                break;
+            case "Stand":
+                dontReveal = false;
+                onHit = false;
+                await Judge();
+                break;
+            case "Surrender":
+                Console.WriteLine(action);
+                break;
+            case "Double":
+                Console.WriteLine(action);
+                break;
+            case "Split":
+                Console.WriteLine(action);
+                break;
+            case "Deal":
+                await DealCards();
+                setup = true;
+                await CalculateSum();
+                setup = false;
+                firstDrawOfGame = true;
+                break;
+            default:
+                Console.WriteLine(action);
+                break;
+        }
+        StateHasChanged();
+    }
+
+    private async Task DealCards()
+    {
+        await DiscardCards();
+        if (Decks[Deck].Count < 12)
+        {
+            for (int i = 0; i < Decks[Discard].Count; i++)
+            {
+                Decks[Deck]
+                .Insert(
+                    new Random().Next(Decks[Deck].Count),
+                    Decks[Discard][Decks[Discard].Count - 1]);
+                Decks[Discard].RemoveAt(Decks[Discard].Count - 1);
+            }
+        }
+        if (Decks[Player].Count == 0)
+        {
+            dealerHasAce = false;
+            playerHasAce = false;
+            await DrawCards(Dealer, 2);
+            await DrawCards(Player, 2);
+        }
+
+        await ResetSums();
+        await Ruling();
+        dontReveal = true;
+        disabled = false;
+        StateHasChanged();
+    }
+
+    private async Task DiscardCards()
+    {
+        var playerCount = Decks[Player].Count;
+        for (int i = 0; i < playerCount; i++)
+        {
+            Decks[Discard].Add(Decks[Player][Decks[Player].Count - 1]);
+            Decks[Player].RemoveAt(Decks[Player].Count - 1);
+            if (Decks[Dealer].Count > 0)
+            {
+                Decks[Discard].Add(Decks[Dealer][Decks[Dealer].Count - 1]);
+                Decks[Dealer].RemoveAt(Decks[Dealer].Count - 1);
+            }
+        }
+    }
+
+    private async Task ResetSums()
+    {
+        dealerSum = 0;
+        playerSum = 0;
+    }
+
+    private async Task Ruling()
+    {
+        if (onHit)
+        {
+            if (playerSum > 21)
+            {
+                await SetRuling("BUST", "darkred", true);
+            }
+        }
+        else
+        {
+            if (playerSum == 0 && dealerSum == 0)
+            {
+                await SetRuling("", "black", false);
+            }
+            else if (playerSum == 21)
+            {
+                await SetRuling("Black Jack!!", "darkolivegreen", true);
+            }
+            else if (playerSum < 21 && playerSum > dealerSum)
+            {
+                await SetRuling("You Win!!", "blue", true);
+            }
+            else if (dealerSum == 21 && playerSum == 21)
+            {
+                await SetRuling("Black Jack!!", "black", true);
+            }
+            else if (dealerSum <= 21 && playerSum < dealerSum)
+            {
+                await SetRuling("You lost", "black", true);
+            }
+            else if (playerSum < 22 && dealerSum < 22 && playerSum == dealerSum)
+            {
+                await SetRuling("Tie game", "black", true);
+            }
+        }
+    }
+
+    private async Task SetRuling(string message, string color, bool disable)
+    {
+        RulingMessage = message;
+        colorStyle = color;
+        disabled = disable;
+        dontReveal = false;
+    }
+
+}

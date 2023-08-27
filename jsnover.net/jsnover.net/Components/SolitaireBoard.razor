@@ -1,0 +1,60 @@
+﻿@using jsnover.net.Models
+@using Constants.Game
+
+<div class="rounded shadow-border p-5 GameBoard">
+
+    @*Remove this shit when done*@
+    <h6>Under Construction, check again later</h6>
+
+    <div class="col-12 row" style="height:20vh">
+        <img height="100%" width="10%" style="position:absolute;left:5%;top:5%" src="@SolitaireImages.BacokOfCard" />
+
+        <img height="100%" width="10%" style="position:absolute;z-index:0;left:20%;top:5%" src="@Dealer["Deal"][0].image" />
+        <img height="100%" width="10%" style="position:absolute;z-index:1;left:25%;top:5%" src="@Dealer["Deal"][1].image" />
+        <img height="100%" width="10%" style="position:absolute;z-index:2;left:30%;top:5%" src="@Dealer["Deal"][2].image" />
+
+        <img height="100%" width="10%" style="position:absolute;left:54%;top:5%" src="@SolitaireImages.BacokOfCard" />
+        <img height="100%" width="10%" style="position:absolute;left:66%;top:5%" src="@SolitaireImages.BacokOfCard" />
+        <img height="100%" width="10%" style="position:absolute;left:78%;top:5%" src="@SolitaireImages.BacokOfCard" />
+        <img height="100%" width="10%" style="position:absolute;left:90%;top:5%" src="@SolitaireImages.BacokOfCard" />
+    </div>
+    <div class="col-12 pt-5 row">
+        @foreach (var col in columns)
+        {
+            var count = 0;
+            var top = 0;
+            var cards = Dealer[col];
+            var cardCount = cards.Count();
+            <div class="col" style="height:20vh">
+                @if (cardCount > 1)
+                {
+                    @foreach (var card in cards)
+                    {
+                        top = count * 15;
+                        <img height="100%" width="70%" style="position:absolute;z-index:@count;left:20%;top:@top%" src="@SolitaireImages.BacokOfCard" />
+                        count++;
+                    }
+                }
+                @{
+                    top = count * 15;
+                    <img height="100%" width="70%" style="position:absolute;z-index:@count;left:20%;top:@top%" src="@cards[cardCount - 1].image" />
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Dictionary<string, List<Card>> Dealer { get; set; }
+    private string[] columns = { "Column1", "Column2", "Column3", "Column4", "Column5", "Column6", "Column7" };
+
+    // deal up to 3 cards from deck recycle deck if needed
+    private async Task Deal()
+    {
+        
+    }
+    // move cards between columns
+
+    // add to SUIT piles
+}

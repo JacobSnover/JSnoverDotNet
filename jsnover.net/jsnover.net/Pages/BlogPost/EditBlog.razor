@@ -1,0 +1,260 @@
+﻿@page "/EditBlog/{Id:int}"
+@using jsnover.net.DataTransferObjects.BlogModels
+@using Infrastructure.Services
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+
+<h3>EditBlog</h3>
+
+<h1 class="text-danger">@uploadError</h1>
+
+<div class="container rounded">
+
+    <h3 class="font-weight-bold text-white">Let's Edit This Blog &#128578</h3>
+
+    <EditForm Model="@editModel" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <div>
+            <div class="form-group">
+                <label for="topic" class="text-light">Topic</label><ValidationMessage For="@(() => editModel.Blog.Topic)" />
+                <InputText class="form-control translucent-text-box shadow-border-xs" id="topic" @bind-Value="editModel.Blog.Topic" />
+            </div>
+            <div class="form-group">
+                <label for="title" class="text-light">Title</label><ValidationMessage For="@(() => editModel.Blog.Title)" />
+                <InputText class="form-control translucent-text-box shadow-border-xs" id="title" @bind-Value="editModel.Blog.Title" />
+            </div>
+            <div class="form-group">
+                <div class="form-group">
+                    <label for="body" class="text-light">Tags</label><ValidationMessage For="@(() => editModel.Tags)" />
+                    <InputText class="form-control translucent-text-box shadow-border-xs" @bind-Value="newTag" />
+                    <button class="btn btn-success form-control translucent-text-box shadow-border-sm" @onclick="NewTag" @onclick:preventDefault>Add Tag</button>
+                </div>
+                <label for="tags" class="text-light">Tags</label><ValidationMessage For="@(() => editModel.Tags)" />
+                <div class="row">
+                    @foreach (var tag in editModel.Tags ?? new List<Models.Tag>())
+                    {
+                        @if (tag.Name != "Remove")
+                        {
+                            <div class="col-lg-3 col-md-6 col-sm-12">
+                                <InputText class="rounded  shadow-border-xs" @bind-Value="tag.Name" />
+                                <button class="btn btn-success form-control translucent-text-box oi oi-trash shadow-border-sm" @onclick="@(e => RemoveTag(tag.Name))" @onclick:preventDefault>Remove</button>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="body" class="text-light">Photos - Can add up to 4 photos</label><ValidationMessage For="@(() => editModel.Photos)" />
+                <InputText class="form-control translucent-text-box shadow-border-xs" @bind-Value="newPhoto" />
+                <button class="btn btn-success form-control translucent-text-box shadow-border-sm" @onclick="NewPhoto" @onclick:preventDefault>Add Pic</button>
+            </div>
+            <div class="row">
+                @foreach (var photo in editModel.Photos ?? new List<Models.Photos>())
+                {
+                    @if (photo.Link != "Remove")
+                    {
+                        <div class="col-lg-3">
+                            <img width="150" height="200" src="@photo.Link" /><br />
+                            <button class="btn-danger" width="150" height="20" name="butt" @onclick="@(e => RemovePhoto(photo.Link))" @onclick:preventDefault>Remove</button>
+                        </div>
+                    }
+                }
+            </div>
+            <div class="form-group">
+                <ValidationMessage For="@(() => editModel.Blog.Body)" />
+                @if (EditorEnabled)
+                {
+                    <div id="toolbar" class="form-control shadow-border-xs">
+                        <span class="ql-formats">
+                            <select class="ql-font">
+                                <option selected=""></option>
+                                <option value="serif"></option>
+                                <option value="monospace"></option>
+                            </select>
+                            <select class="ql-size">
+                                <option value="small"></option>
+                                <option selected=""></option>
+                                <option value="large"></option>
+                                <option value="huge"></option>
+                            </select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-color"></select>
+                            <select class="ql-background"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                            <button class="ql-indent" value="-1"></button>
+                            <button class="ql-indent" value="+1"></button>
+                            <select class="ql-align">
+                                <option selected=""></option>
+                                <option value="center"></option>
+                                <option value="right"></option>
+                                <option value="justify"></option>
+                            </select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                        </span>
+                    </div>
+                }
+                <div @ref="@divEditorElement" class="textarea form-control translucent-text-box shadow-border-xs" style="height:400px" />
+
+            </div>
+            <div class="form-group">
+                <button class="btn btn-success form-control shadow-border-sm" @onclick="IsPublished" type="button">@publishUnPublish</button>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-primary form-control shadow-border-sm" type="submit">Submit</button>
+            </div>
+        </div>
+
+    </EditForm>
+
+    <h1 class="text-danger">@uploadError</h1>
+</div>
+
+<jsnover.net.Components.Footer />
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    private BlogEditModel editModel = new BlogEditModel();
+    private EditContext editContext;
+    private string uploadError;
+    private string newPhoto;
+    private string newTag;
+    private bool published;
+    private string publishUnPublish = "Publish";
+    private ElementReference divEditorElement;
+    private bool EditorEnabled = true;
+
+    async Task GetHTML()
+    {
+        editModel.Blog.Body = await JSRuntime.InvokeAsync<string>(
+            "QuillFunctions.getQuillHTML", divEditorElement);
+    }
+
+    async Task insertEditorText()
+    {
+        var QuillDelta = await JSRuntime.InvokeAsync<object>(
+            "QuillFunctions.insertText", divEditorElement, editModel.Blog.Body);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            editModel = await BlogEditModel.MapToBlogPageModel(Id);
+
+            published = (bool)editModel.Blog.Published ? false : true;
+
+            IsPublished();
+
+            this.StateHasChanged();
+
+            await JSRuntime.InvokeAsync<string>(
+                "QuillFunctions.createQuill", divEditorElement);
+        }
+
+        if (editModel.Blog.Body != "Empty")
+        {
+
+            await insertEditorText();
+        }
+    }
+
+    private void IsPublished()
+    {
+        if (published)
+        {
+            publishUnPublish = "Publish";
+            published = false;
+        }
+        else
+        {
+            publishUnPublish = "Un-Publish";
+            published = true;
+        }
+    }
+
+    private void NewPhoto()
+    {
+        if (editModel.Photos.Count < 4)
+        {
+            editModel.Photos.Add(new Models.Photos
+            {
+                Id = 0,
+                Link = newPhoto,
+                BlogId = editModel.Blog.Id
+            });
+            this.StateHasChanged();
+        }
+    }
+
+    private void RemovePhoto(string link)
+    {
+        editModel.Photos.First(photo => photo.Link == link).Link = "Remove";
+        this.StateHasChanged();
+    }
+
+    private void NewTag()
+    {
+        if (editModel.Tags != null)
+        {
+            if (newTag != null && newTag != string.Empty)
+            {
+                editModel.Tags.Add(new Models.Tag
+                {
+                    Id = 0,
+                    Name = newTag,
+                    BlogId = editModel.Blog.Id
+                });
+                this.StateHasChanged();
+            }
+        }
+    }
+
+    private void RemoveTag(string name)
+    {
+        editModel.Tags.First(tag => tag.Name == name).Name = "Remove";
+        this.StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(editModel);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var isValid = editContext.Validate();
+
+        if (isValid)
+        {
+            await GetHTML();
+            editModel.Blog.Published = published;
+            var uploaded = await BlogService.SubmitBlog(editModel);
+            if (uploaded)
+            {
+                NavigationManager.NavigateTo("");
+            }
+            else
+            {
+                uploadError = "There was an ERROR when uploading, save your text before closing the page.";
+                this.StateHasChanged();
+            }
+
+        }
+    }
+
+
+}
