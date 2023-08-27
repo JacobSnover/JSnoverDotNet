@@ -9,7 +9,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Blazored.SessionStorage" Version="1.0.12" />
-		<PackageReference Include="BlazorPro.BlazorSize" Version="5.0.0" />
+		<PackageReference Include="BlazorPro.BlazorSize" Version="6.2.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.10" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="7.0.10" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="7.0.10" />
