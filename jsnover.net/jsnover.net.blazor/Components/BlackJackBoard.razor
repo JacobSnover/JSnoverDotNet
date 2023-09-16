@@ -1,5 +1,6 @@
 ﻿@using jsnover.net.blazor.Models
 @using Constants.Game
+@using jsnover.net.blazor.Infrastructure.Utilities
 
 
 <div class="rounded shadow-border p-5 GameBoard">
@@ -29,7 +30,7 @@
                     <button class="btn btn-danger" @onclick='(async() => await Actions("deal"))'>
                         Deal
                     </button>
-                </div>                
+                </div>
             </div>
         </div>
         <div class="col-12">
@@ -78,6 +79,7 @@
 {
     [Parameter]
     public Dictionary<string, List<Card>> Decks { get; set; } // indexes Deck, Player, Dealer, Discard
+    public CardComparer comparer { get; set; } = new CardComparer();
     public bool dontReveal { get; set; } = true;
     public string RulingMessage { get; set; }
     public string colorStyle { get; set; }
@@ -186,13 +188,19 @@
 
     private async Task Judge()
     {
+        var player = Decks["Player"].ToList();
+        var dealer = Decks["Dealer"].ToList();
+        player.Sort(comparer);
+        dealer.Sort(comparer);
+
+
         bool isPlayer;
-        foreach (var card in Decks["Dealer"])
+        foreach (var card in dealer)
         {
             dealerSum = await CardValue(card, dealerSum, isPlayer = false);
             dealerSumLastGame = dealerSum;
         }
-        foreach (var card in Decks["Player"])
+        foreach (var card in player)
         {
             playerSum = await CardValue(card, playerSum, isPlayer = true);
             playerSumLastGame = playerSum;
