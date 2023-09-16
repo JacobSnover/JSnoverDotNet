@@ -8,7 +8,7 @@ namespace jsnover.net.blazor.Infrastructure.Utilities
     {
         public int Compare(Card x, Card y)
         {
-            var regex = new Regex("^(d+)");
+            var regex = new Regex(@"^(\d+)");
 
             // run the regex on both strings
             var xRegexResult = regex.Match(x.value);
@@ -21,10 +21,26 @@ namespace jsnover.net.blazor.Infrastructure.Utilities
             }
 
             // otherwise return as string comparison
-            if (x.value is "Ace")
-                return 1;
-
             return x.value.CompareTo(y.value);
+        }
+
+        public void MoveAcesToEnd(List<Card> cards)
+        {
+            var aces = new List<Card>();
+
+            foreach (var card in cards)
+            {
+                if (card.value.ToLower() == "ace")
+                {
+                    aces.Add(card);
+                }
+            }
+
+            foreach (var ace in aces)
+            {
+                cards.Remove(ace);
+                cards.Add(ace);
+            }
         }
     }
 }

@@ -192,6 +192,8 @@
         var dealer = Decks["Dealer"].ToList();
         player.Sort(comparer);
         dealer.Sort(comparer);
+        comparer.MoveAcesToEnd(player);
+        comparer.MoveAcesToEnd(dealer);
 
 
         bool isPlayer;
@@ -282,7 +284,6 @@
             case "9":
                 return sum + 9;
             case "10":
-                return sum + 10;
             case "QUEEN":
             case "KING":
             case "JACK":
