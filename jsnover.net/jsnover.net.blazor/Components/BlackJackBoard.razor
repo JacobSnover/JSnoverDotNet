@@ -1,5 +1,7 @@
 ﻿@using jsnover.net.blazor.Models
 @using Constants.Game
+@using static Constants.Game.BlackJack
+@using static Constants.Game.General
 @using jsnover.net.blazor.Infrastructure.Utilities
 
 
@@ -98,12 +100,10 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Decks[Player].Count == 0)
+        if (Decks["Player"].Count == 0)
         {
-            await DrawCards(Dealer, 2);
-            await DrawCards(Player, 2);
-            await CalculateSum();
-            setup = false;
+            await DrawCards("Dealer", 2);
+            await DrawCards("Player", 2);
         }
     }
 
@@ -115,87 +115,6 @@
         {
             Decks[deckId].Add(deck[deck.Count - 1]);
             deck.RemoveAt(deck.Count - 1);
-        }
-    }
-
-    private async Task Judge()
-    {
-        if (firstDrawOfGame)
-            firstDrawOfGame = false;
-        else
-            await CalculateSum();
-
-        if (!setup)
-        {
-            await Ruling();
-            await ResetSums();
-        }
-    }
-
-    public async Task CalculateSum()
-    {
-        dealerHasAce = false;
-        dealerAceIsEleven = false;
-        playerHasAce = false;
-        playerAceIsEleven = false;
-        foreach (var card in Decks[Dealer])
-        {
-            dealerSum = await CardValue(card, dealerSum, dealerHasAce, dealerAceIsEleven);
-            dealerSumLastGame = dealerSum;
-        }
-        foreach (var card in Decks[Player])
-        {
-            playerSum = await CardValue(card, playerSum, playerHasAce, playerAceIsEleven);
-            playerSumLastGame = playerSum;
-        }
-    }
-    private async Task<int> CardValue(Card card, int sum, bool hasAce, bool aceIsEleven)
-    {
-        switch (card.value)
-        {
-            case "2":
-                return sum + 2;
-            case "3":
-                return sum + 3;
-            case "4":
-                return sum + 4;
-            case "5":
-                return sum + 5;
-            case "6":
-                return sum + 6;
-            case "7":
-                return sum + 7;
-            case "8":
-                return sum + 8;
-            case "9":
-                return sum + 9;
-            case "10":
-                return sum + 10;
-            case "QUEEN":
-            case "KING":
-            case "JACK":
-                return sum + 10;
-            case "ACE":
-                hasAce = true;
-                if ((sum + 11) > 21)
-                {
-                    return sum + 1;
-                }
-                else if (aceIsEleven && sum > 21)
-                {
-                    return sum - 10;
-                }
-                else
-                {
-                    aceIsEleven = true;
-                    return sum + 11;
-                }
-            default:
-                if (aceIsEleven || hasAce && sum > 21)
-                {
-                    return sum - 10;
-                }
-                return 0;
         }
     }
 
@@ -225,10 +144,6 @@
                 break;
             case "Deal":
                 await DealCards();
-                setup = true;
-                await CalculateSum();
-                setup = false;
-                firstDrawOfGame = true;
                 break;
             default:
                 Console.WriteLine(action);
