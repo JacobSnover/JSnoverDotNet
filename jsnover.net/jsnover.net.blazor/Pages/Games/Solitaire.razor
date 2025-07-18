@@ -5,26 +5,19 @@
 
 @if (BeforeGame)
 {    
-    <h1>Check Back Soon!</h1>
-    @*<button class="btn btn-primary" @onclick="NewGame">New Game</button>*@
+    <button class="btn btn-primary" @onclick="NewGame">New Game</button>
 }
 else
 {
-    <SolitaireBoard Dealer="Dealer">
-
-    </SolitaireBoard>
+    <SolitaireBoard />
 }
 
 
 @code {
     private bool BeforeGame { get; set; } = true;
-    private Dictionary<string, List<Card>> Dealer { get; set; }
 
-    private async Task NewGame()
+    private void NewGame()
     {
-        Dealer = await cardService.CreateSolitaireDictionary();
         BeforeGame = false;
-        StateHasChanged();
     }
-
 }
