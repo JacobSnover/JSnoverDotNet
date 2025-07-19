@@ -30,15 +30,12 @@ window.enableDragDrop = function(dotNetHelper) {
             tableauZones.forEach(zone => {
                 zone.addEventListener('dragover', e => {
                     e.preventDefault();
-                    e.target.closest('.tableau-dropzone').style.backgroundColor = '#225522';
                 });
                 zone.addEventListener('dragleave', e => {
                     e.preventDefault();
-                    e.target.closest('.tableau-dropzone').style.backgroundColor = '#184d18';
                 });
                 zone.addEventListener('drop', async e => {
                     e.preventDefault();
-                    e.target.closest('.tableau-dropzone').style.backgroundColor = '#184d18';
                     const cardId = e.dataTransfer.getData('text/plain');
                     const colIndex = parseInt(zone.dataset.colindex, 10);
                     console.log('Dropping card', cardId, 'on tableau', colIndex);

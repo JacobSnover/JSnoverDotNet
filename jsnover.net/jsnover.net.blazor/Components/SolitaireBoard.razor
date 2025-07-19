@@ -53,16 +53,18 @@
                 <div class="d-flex justify-content-end">
                 @for (int i = 0; i < 4; i++)
                 {
-                    <div class="foundation-dropzone mx-1 card-outline" style="width:75px;height:105px;"
+                    <div class="foundation-dropzone mx-1" style="width:75px;height:105px;"
                          data-foundationindex="@i">
                         @if (gameState.Foundations[i].Any())
                         {
                             var card = gameState.Foundations[i].Last();
-                            <img src="@card.image" width="75" />
+                            <div class="card-outline" style="width:75px;height:105px;">
+                                <img src="@card.image" width="75" />
+                            </div>
                         }
                         else
                         {
-                            <div class="empty-stack" style="width:75px;height:105px;"></div>
+                            <div class="card-outline empty-stack" style="width:75px;height:105px;"></div>
                         }
                     </div>
                 }
@@ -75,17 +77,18 @@
                 {
                     <div class="col" style="min-height:150px;position:relative;"
                          data-colindex="@col">
-                        <div class="tableau-dropzone" style="position:absolute;top:0;left:0;right:0;bottom:0;"></div>
-                        @if (!gameState.Tableau[col].Any())
-                        {
-                            <div class="empty-stack card-outline" style="width:75px;height:105px;"></div>
-                        }
-                        @for (int i = 0; i < gameState.Tableau[col].Count; i++)
-                        {
-                            var card = gameState.Tableau[col][i];
-                            <img src="@card.image" width="75" class="tableau-card" draggable="true" data-cardid="col-@col-@i"
-                                 style="position:absolute;top:@(i*30)px;z-index:@i;" />
-                        }
+                        <div class="tableau-dropzone" data-colindex="@col" style="position:absolute;top:0;left:0;right:0;bottom:0;">
+                            @if (!gameState.Tableau[col].Any())
+                            {
+                                <div class="empty-stack card-outline" style="width:75px;height:105px;"></div>
+                            }
+                            @for (int i = 0; i < gameState.Tableau[col].Count; i++)
+                            {
+                                var card = gameState.Tableau[col][i];
+                                <img src="@card.image" width="75" class="tableau-card" draggable="true" data-cardid="col-@col-@i"
+                                     style="position:absolute;top:@(i*30)px;z-index:@i;" />
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -172,7 +175,12 @@
             if (targetType == "tableau")
             {
                 await JS.InvokeVoidAsync("console.log", $"Moving from tableau {fromCol} index {cardIndex} to tableau {targetIndex}");
-                gameState.MoveTableauToTableau(fromCol, cardIndex, targetIndex);
+                bool success = gameState.MoveTableauToTableau(fromCol, cardIndex, targetIndex);
+                if (!success)
+                {
+                    await JS.InvokeVoidAsync("console.log", "Move validation failed - invalid tableau move");
+                    return;
+                }
             }
             else if (targetType == "foundation")
             {

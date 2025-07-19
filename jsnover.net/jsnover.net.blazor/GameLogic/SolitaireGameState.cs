@@ -55,9 +55,26 @@ namespace jsnover.net.blazor.GameLogic
         // Move a card from one tableau column to another
         public bool MoveTableauToTableau(int fromCol, int cardIndex, int toCol)
         {
+            if (fromCol == toCol) return false; // Can't move to same column
+            
             var movingCards = Tableau[fromCol].Skip(cardIndex).ToList();
-            if (!CanMoveToTableau(movingCards.First(), Tableau[toCol].LastOrDefault()))
+            if (movingCards.Count == 0) return false;
+            
+            var targetCard = Tableau[toCol].LastOrDefault();
+            var movingCard = movingCards[0];
+            
+            Console.WriteLine($"Moving {movingCard.value} of {movingCard.suit} to {(targetCard == null ? "empty column" : $"{targetCard.value} of {targetCard.suit}")}");
+            
+            // Check if the move is valid
+            if (!CanMoveToTableau(movingCard, targetCard))
+            {
+                Console.WriteLine("Invalid tableau move");
+                Console.WriteLine($"Moving card value: {GetCardValue(movingCard.value)}, Target card value: {(targetCard == null ? "empty" : GetCardValue(targetCard.value).ToString())}");
+                Console.WriteLine($"Colors: Moving {(IsRed(movingCard.suit) ? "red" : "black")}, Target {(targetCard == null ? "empty" : IsRed(targetCard.suit) ? "red" : "black")}");
                 return false;
+            }
+
+            // Perform the move
             Tableau[toCol].AddRange(movingCards);
             Tableau[fromCol].RemoveRange(cardIndex, movingCards.Count);
             return true;
@@ -109,9 +126,26 @@ namespace jsnover.net.blazor.GameLogic
         // Move validation helpers
         private bool CanMoveToTableau(Card moving, Card target)
         {
+            // Rule 1: Kings can be moved to empty columns
             if (target == null)
-                return moving.value == "K"; // Only Kings can be placed on empty columns
-            return IsOppositeColor(moving.suit, target.suit) && GetCardValue(moving.value) == GetCardValue(target.value) - 1;
+            {
+                bool isKing = moving.value == "K" || moving.value == "KING";
+                Console.WriteLine($"Moving to empty column. Card is {moving.value}, isKing: {isKing}");
+                return isKing;
+            }
+
+            // Rule 2: Cards must be of opposite colors
+            bool oppositeColors = IsOppositeColor(moving.suit, target.suit);
+            
+            // Rule 3: Cards must be in descending order (moving card must be 1 less than target)
+            int movingValue = GetCardValue(moving.value);
+            int targetValue = GetCardValue(target.value);
+            bool correctSequence = movingValue == targetValue - 1;
+
+            Console.WriteLine($"Moving {moving.value} ({movingValue}) of {moving.suit} to {target.value} ({targetValue}) of {target.suit}");
+            Console.WriteLine($"Opposite colors: {oppositeColors}, Correct sequence: {correctSequence}");
+
+            return oppositeColors && correctSequence;
         }
 
         private bool CanMoveToFoundation(Card card, int foundationIndex)
