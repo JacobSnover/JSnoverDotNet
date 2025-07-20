@@ -1,95 +1,113 @@
+window.solitaireDragDrop = {
+    dotNetHelper: null,
+    initialized: false
+};
+
 window.enableDragDrop = function(dotNetHelper) {
-    try {
-        console.log('Enabling drag and drop...');
-        
-        // Helper function to setup drag and drop
-        function setupDragAndDrop() {
-            // Cards
-            console.log('Looking for cards...');
-            const cards = document.querySelectorAll('.tableau-card, .waste-card');
-            console.log('Found', cards.length, 'cards');
-            
-            cards.forEach(card => {
-                console.log('Setting up card:', card.dataset.cardid);
-                card.setAttribute('draggable', 'true');
-                card.addEventListener('dragstart', e => {
-                    console.log('Drag start:', card.dataset.cardid);
-                    e.dataTransfer.setData('text/plain', card.dataset.cardid);
-                    // Add visual feedback
-                    e.target.style.opacity = '0.5';
-                });
-                card.addEventListener('dragend', e => {
-                    e.target.style.opacity = '1';
-                });
-            });
-
-            // Tableau dropzones
-            const tableauZones = document.querySelectorAll('.tableau-dropzone');
-            console.log('Found', tableauZones.length, 'tableau zones');
-            
-            tableauZones.forEach(zone => {
-                zone.addEventListener('dragover', e => {
-                    e.preventDefault();
-                });
-                zone.addEventListener('dragleave', e => {
-                    e.preventDefault();
-                });
-                zone.addEventListener('drop', async e => {
-                    e.preventDefault();
-                    const cardId = e.dataTransfer.getData('text/plain');
-                    const colIndex = parseInt(zone.dataset.colindex, 10);
-                    console.log('Dropping card', cardId, 'on tableau', colIndex);
-                    try {
-                        await dotNetHelper.invokeMethodAsync('OnCardDrop', cardId, 'tableau', colIndex);
-                    } catch (error) {
-                        console.error('Error in OnCardDrop:', error);
-                    }
-                });
-            });
-
-            // Foundation dropzones
-            const foundationZones = document.querySelectorAll('.foundation-dropzone');
-            console.log('Found', foundationZones.length, 'foundation zones');
-            
-            foundationZones.forEach(zone => {
-                zone.addEventListener('dragover', e => {
-                    e.preventDefault();
-                    e.target.closest('.foundation-dropzone').style.backgroundColor = '#333';
-                });
-                zone.addEventListener('dragleave', e => {
-                    e.preventDefault();
-                    e.target.closest('.foundation-dropzone').style.backgroundColor = '#222';
-                });
-                zone.addEventListener('drop', async e => {
-                    e.preventDefault();
-                    e.target.closest('.foundation-dropzone').style.backgroundColor = '#222';
-                    const cardId = e.dataTransfer.getData('text/plain');
-                    const foundationIndex = parseInt(zone.dataset.foundationindex, 10);
-                    console.log('Dropping card', cardId, 'on foundation', foundationIndex);
-                    try {
-                        await dotNetHelper.invokeMethodAsync('OnCardDrop', cardId, 'foundation', foundationIndex);
-                    } catch (error) {
-                        console.error('Error in OnCardDrop:', error);
-                    }
-                });
-            });
+    console.log('Initializing drag and drop...');
+    window.solitaireDragDrop.dotNetHelper = dotNetHelper;
+    
+    function handleDragStart(e) {
+        console.log('Drag start:', e.target.dataset.cardid);
+        if (e.target.getAttribute('draggable') === 'false') {
+            console.log('Card is not draggable');
+            e.preventDefault();
+            return;
         }
+        e.dataTransfer.setData('text/plain', e.target.dataset.cardid);
+        e.target.style.opacity = '0.5';
+    }
 
-        // Initial setup
-        setupDragAndDrop();
+    function handleDragEnd(e) {
+        console.log('Drag end');
+        e.target.style.opacity = '1';
+    }
 
-        // Setup observer for dynamic updates
-        const observer = new MutationObserver((mutations) => {
-            console.log('DOM updated, re-enabling drag and drop');
-            setupDragAndDrop();
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+    }
+
+    async function handleDrop(e, type) {
+        e.preventDefault();
+        try {
+            if (!window.solitaireDragDrop.dotNetHelper) {
+                console.error('No .NET helper available');
+                return;
+            }
+            const cardId = e.dataTransfer.getData('text/plain');
+            const index = parseInt(e.currentTarget.dataset[type === 'foundation' ? 'foundationindex' : 'colindex']);
+            console.log('Dropping card', cardId, 'on', type, 'at index', index);
+            await window.solitaireDragDrop.dotNetHelper.invokeMethodAsync('OnCardDrop', cardId, type, index);
+        } catch (error) {
+            console.error('Error in handleDrop:', error);
+        }
+    }
+
+    function setupDragAndDrop() {
+        console.log('Setting up drag and drop handlers...');
+        
+        // Setup drag events for cards
+        const cards = document.querySelectorAll('.tableau-card, .waste-card');
+        console.log('Found cards:', cards.length);
+        
+        cards.forEach(card => {
+            const isDraggable = card.getAttribute('draggable') !== 'false';
+            console.log('Card:', card.dataset.cardid, 'draggable:', isDraggable);
+            if (isDraggable) {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+            }
         });
 
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
+        // Setup drop zones
+        const tableauZones = document.querySelectorAll('.tableau-dropzone');
+        console.log('Found tableau zones:', tableauZones.length);
+        tableauZones.forEach(zone => {
+            zone.addEventListener('dragover', handleDragOver);
+            zone.addEventListener('dragleave', handleDragLeave);
+            zone.addEventListener('drop', (e) => handleDrop(e, 'tableau'));
         });
 
-    } catch (error) {
-        console.error('Error in enableDragDrop:', error);
+        const foundationZones = document.querySelectorAll('.foundation-dropzone');
+        console.log('Found foundation zones:', foundationZones.length);
+        foundationZones.forEach(zone => {
+            zone.addEventListener('dragover', handleDragOver);
+            zone.addEventListener('dragleave', handleDragLeave);
+            zone.addEventListener('drop', (e) => handleDrop(e, 'foundation'));
+        });
+    }
+
+    // Set up mutation observer to handle dynamically added cards
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node instanceof Element) {
+                    const cards = node.classList?.contains('tableau-card') || node.classList?.contains('waste-card') 
+                        ? [node] 
+                        : node.querySelectorAll('.tableau-card, .waste-card');
+                    
+                    cards.forEach(card => {
+                        if (card.getAttribute('draggable') !== 'false') {
+                            card.addEventListener('dragstart', handleDragStart);
+                            card.addEventListener('dragend', handleDragEnd);
+                        }
+                    });
+                }
+            });
+        });
+    });
+
+    // Initial setup
+    setupDragAndDrop();
+
+    // Start observing the game board
+    const gameBoard = document.querySelector('.GameBoard');
+    if (gameBoard) {
+        observer.observe(gameBoard, { childList: true, subtree: true });
     }
 }

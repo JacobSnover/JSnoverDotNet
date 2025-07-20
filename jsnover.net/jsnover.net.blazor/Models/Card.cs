@@ -11,5 +11,7 @@ namespace jsnover.net.blazor.Models
         public string code { get; set; }
         [JsonIgnore]
         public string back { get; set; } = SolitaireImages.BacokOfCard;
+        [JsonIgnore]
+        public bool IsFaceUp { get; set; }
     }
 }

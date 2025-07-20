@@ -2,6 +2,7 @@
 @using jsnover.net.blazor.GameLogic
 @inject jsnover.net.blazor.Infrastructure.Services.CardService cardService
 @inject IJSRuntime JS
+@implements IDisposable
 
 <div class="rounded shadow-border p-5 GameBoard">
     <div class="d-flex align-items-center mb-4">
@@ -21,7 +22,7 @@
         <div class="row mb-4">
             <div class="col-auto">
                 <div class="stock-area me-2">
-                    <button class="btn p-0" @onclick="DrawFromStock" disabled="@(gameState.Stock.Count == 0 && !CanRedrawStock)">
+                    <button class="btn p-0" @onclick="async () => await DrawFromStock()" disabled="@(gameState.Stock.Count == 0 && !CanRedrawStock)">
                         @if (gameState.Stock.Any())
                         {
                             <div class="card-outline" style="width:75px;height:105px;">
@@ -40,8 +41,18 @@
                 <div class="discard-area mx-2 card-outline" style="width:75px;height:105px;">
                     @if (gameState.Waste.Any())
                     {
-                        var card = gameState.Waste.Last();
-                        <img src="@card.image" width="75" class="waste-card" draggable="true" data-cardid="waste-0" />
+                        @for (int i = Math.Max(0, gameState.Waste.Count - 3); i < gameState.Waste.Count; i++)
+                        {
+                            var card = gameState.Waste[i];
+                            var isTop = i == gameState.Waste.Count - 1;
+                            var offset = (i - Math.Max(0, gameState.Waste.Count - 3)) * 10;
+                            <img src="@card.image" 
+                                 width="75" 
+                                 class="waste-card" 
+                                 draggable="@isTop"
+                                 data-cardid="@(isTop ? "waste-0" : $"waste-{i}")"
+                                 style="position:absolute;left:@(offset)px;" />
+                        }
                     }
                     else
                     {
@@ -85,7 +96,10 @@
                             @for (int i = 0; i < gameState.Tableau[col].Count; i++)
                             {
                                 var card = gameState.Tableau[col][i];
-                                <img src="@card.image" width="75" class="tableau-card" draggable="true" data-cardid="col-@col-@i"
+                                <img src="@(card.IsFaceUp ? card.image : card.back)" width="75" 
+                                     class="tableau-card" 
+                                     draggable="@card.IsFaceUp" 
+                                     data-cardid="col-@col-@i"
                                      style="position:absolute;top:@(i*30)px;z-index:@i;" />
                             }
                         </div>
@@ -108,8 +122,13 @@
     private DotNetObjectReference<SolitaireBoard> objRef;
     
     private bool CanRedrawStock => infiniteDraw && gameState?.Stock.Count == 0 && gameState?.Waste.Any() == true;
+    
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
 
-    private void DrawFromStock()
+    private async Task DrawFromStock()
     {
         if (gameState.Stock.Count == 0 && infiniteDraw && gameState.Waste.Any())
         {
@@ -122,6 +141,8 @@
         
         gameState.DrawFromStock();
         StateHasChanged();
+        await Task.Delay(10); // Allow time for DOM to update
+        await JS.InvokeVoidAsync("enableDragDrop", objRef);
     }
 
     protected override async Task OnInitializedAsync()
@@ -131,15 +152,23 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        try
         {
-            objRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("enableDragDrop", objRef);
+            if (gameState != null)
+            {
+                if (firstRender || objRef == null)
+                {
+                    objRef?.Dispose();
+                    objRef = DotNetObjectReference.Create(this);
+                }
+                await Task.Delay(50); // Give the DOM time to update
+                await JS.InvokeVoidAsync("enableDragDrop", objRef);
+                await JS.InvokeVoidAsync("console.log", "Drag and drop initialized");
+            }
         }
-        else if (gameState != null)
+        catch (Exception ex)
         {
-            // Re-enable drag and drop after state changes
-            await JS.InvokeVoidAsync("enableDragDrop", objRef);
+            await JS.InvokeVoidAsync("console.error", "Error initializing drag and drop:", ex.Message);
         }
     }
 
@@ -155,10 +184,21 @@
         StateHasChanged();
     }
 
-    private void RestartGame()
+    private async Task RestartGame()
     {
-        gameState.Restart();
-        StateHasChanged();
+        try
+        {
+            gameState.Restart();
+            objRef?.Dispose();
+            objRef = DotNetObjectReference.Create(this);
+            StateHasChanged();
+            await Task.Delay(50); // Give the DOM time to update
+            await JS.InvokeVoidAsync("enableDragDrop", objRef);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error during restart:", ex.Message);
+        }
     }
 
     [JSInvokable]

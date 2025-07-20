@@ -45,7 +45,10 @@ namespace jsnover.net.blazor.GameLogic
                 for (int row = 0; row <= col; row++)
                 {
                     if (deckIndex >= deck.Count) throw new System.Exception("Not enough cards to deal tableau");
-                    Tableau[col].Add(deck[deckIndex++]);
+                    var card = deck[deckIndex++];
+                    // Only the top card in each column starts face up
+                    card.IsFaceUp = row == col;
+                    Tableau[col].Add(card);
                 }
             }
             // Remaining cards go to stock
@@ -57,26 +60,31 @@ namespace jsnover.net.blazor.GameLogic
         {
             if (fromCol == toCol) return false; // Can't move to same column
             
-            var movingCards = Tableau[fromCol].Skip(cardIndex).ToList();
-            if (movingCards.Count == 0) return false;
+            if (cardIndex >= Tableau[fromCol].Count) return false;
             
+            var movingCard = Tableau[fromCol][cardIndex];
             var targetCard = Tableau[toCol].LastOrDefault();
-            var movingCard = movingCards[0];
-            
-            Console.WriteLine($"Moving {movingCard.value} of {movingCard.suit} to {(targetCard == null ? "empty column" : $"{targetCard.value} of {targetCard.suit}")}");
             
             // Check if the move is valid
             if (!CanMoveToTableau(movingCard, targetCard))
             {
-                Console.WriteLine("Invalid tableau move");
-                Console.WriteLine($"Moving card value: {GetCardValue(movingCard.value)}, Target card value: {(targetCard == null ? "empty" : GetCardValue(targetCard.value).ToString())}");
-                Console.WriteLine($"Colors: Moving {(IsRed(movingCard.suit) ? "red" : "black")}, Target {(targetCard == null ? "empty" : IsRed(targetCard.suit) ? "red" : "black")}");
                 return false;
             }
 
-            // Perform the move
-            Tableau[toCol].AddRange(movingCards);
-            Tableau[fromCol].RemoveRange(cardIndex, movingCards.Count);
+            // Calculate how many cards to move (all cards from cardIndex to end)
+            int cardsToMove = Tableau[fromCol].Count - cardIndex;
+            
+            // Move the cards
+            var movedCards = Tableau[fromCol].GetRange(cardIndex, cardsToMove);
+            Tableau[toCol].AddRange(movedCards);
+            Tableau[fromCol].RemoveRange(cardIndex, cardsToMove);
+            
+            // Reveal the new top card in the source column if there are any cards left
+            if (Tableau[fromCol].Count > 0)
+            {
+                Tableau[fromCol].Last().IsFaceUp = true;
+            }
+            
             return true;
         }
 
@@ -89,6 +97,13 @@ namespace jsnover.net.blazor.GameLogic
             
             Foundations[foundationIndex].Add(card);
             Tableau[fromCol].RemoveAt(Tableau[fromCol].Count - 1);
+            
+            // Reveal the new top card in the source column if there are any cards left
+            if (Tableau[fromCol].Count > 0)
+            {
+                Tableau[fromCol].Last().IsFaceUp = true;
+            }
+            
             return true;
         }
 
@@ -98,6 +113,7 @@ namespace jsnover.net.blazor.GameLogic
             var card = Waste.LastOrDefault();
             if (card == null || !CanMoveToTableau(card, Tableau[toCol].LastOrDefault()))
                 return false;
+            card.IsFaceUp = true; // Ensure card stays face up when moved
             Tableau[toCol].Add(card);
             Waste.RemoveAt(Waste.Count - 1);
             return true;
@@ -109,6 +125,7 @@ namespace jsnover.net.blazor.GameLogic
             var card = Waste.LastOrDefault();
             if (card == null || !CanMoveToFoundation(card, foundationIndex))
                 return false;
+            card.IsFaceUp = true; // Ensure card stays face up in foundation
             Foundations[foundationIndex].Add(card);
             Waste.RemoveAt(Waste.Count - 1);
             return true;
@@ -118,7 +135,9 @@ namespace jsnover.net.blazor.GameLogic
         public bool DrawFromStock()
         {
             if (Stock.Count == 0) return false;
-            Waste.Add(Stock[0]);
+            var card = Stock[0];
+            card.IsFaceUp = true; // Cards in waste pile should always be face up
+            Waste.Add(card);
             Stock.RemoveAt(0);
             return true;
         }
@@ -186,7 +205,7 @@ namespace jsnover.net.blazor.GameLogic
                     return 4;
                 case "5":
                     return 5;
-                case "6":
+                case "6": 
                     return 6;
                 case "7":
                     return 7;
