@@ -1,0 +1,815 @@
+# Blazor Components - Copilot Instructions
+
+**Focus Area:** Reusable Razor components, parameter binding, lifecycle, event handling, state management.
+
+**Key Files:**
+- Shared Components: `Shared/MainLayout.razor`, `Shared/NavMenu.razor`, `Shared/LoginDisplay.razor`
+- Feature Components: `Components/SolitaireBoard.razor`, `Components/BlackJackBoard.razor`, `Components/CardGames.razor`, `Components/Footer.razor`
+- Styling: `Components/*.razor.css` (CSS isolation)
+
+## Blazor Component Architecture
+
+```
+Razor Component (.razor file)
+    ├─ @page directive (routing, if page)
+    ├─ @layout directive (specify layout)
+    ├─ @inject directive (service injection)
+    ├─ @attribute directive (metadata)
+    ├─ HTML markup (template)
+    ├─ CSS (isolated styles)
+    └─ @code block (C# logic)
+```
+
+## Component Lifecycle
+
+```
+Component Initialized
+        ↓
+OnInitialized() or OnInitializedAsync()
+        ↓
+Component Parameters Set
+        ↓
+OnParametersSet() or OnParametersSetAsync()
+        ↓
+Component Rendered
+        ↓
+[Event Handler: @onclick, @onchange, etc.]
+        ↓
+StateHasChanged() [if needed]
+        ↓
+[Repeat: Parameters Set → Rendered]
+        ↓
+Component Disposed
+        ↓
+OnAfterRender() or OnAfterRenderAsync()
+        ↓
+Dispose() or DisposeAsync()
+```
+
+### Lifecycle Methods
+
+```csharp
+@code {
+    // 1. Called once when component created
+    protected override async Task OnInitializedAsync() {
+        // Load data from services
+        var data = await service.GetDataAsync();
+    }
+    
+    // 2. Called whenever parent passes new parameters
+    protected override async Task OnParametersSetAsync() {
+        // React to parameter changes
+        if (SomeParamChanged) {
+            await RefreshAsync();
+        }
+    }
+    
+    // 3. Called after rendering to DOM
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            // Initialize JavaScript interop
+            await jsRuntime.InvokeAsync("setupChart", elementRef);
+        }
+    }
+    
+    // 4. Called when component disposed
+    async ValueTask IAsyncDisposable.DisposeAsync() {
+        // Cleanup (unsubscribe, dispose resources)
+        await jsRuntime.InvokeAsync("cleanup");
+    }
+}
+```
+
+## Component Parameter Binding
+
+### Basic Parameters
+
+```razor
+<!-- Parent passes parameter -->
+<ChildComponent Title="My Title" Count="5" />
+
+<!-- Child receives -->
+@code {
+    [Parameter]
+    public string Title { get; set; }
+    
+    [Parameter]
+    public int Count { get; set; }
+}
+```
+
+### Two-Way Binding (@bind)
+
+```razor
+<!-- Two-way binding: Parent ↔ Child -->
+<input @bind="SearchTerm" placeholder="Search..." />
+<ChildComponent @bind-Value="SelectedBlog" />
+
+@code {
+    private string SearchTerm { get; set; }
+    private BlogListModel SelectedBlog { get; set; }
+}
+```
+
+**Under the Hood:**
+```csharp
+// @bind expands to:
+<ChildComponent Value="SelectedBlog" 
+                 ValueChanged="args => SelectedBlog = args" />
+
+// Child must implement:
+[Parameter]
+public BlogListModel Value { get; set; }
+
+[Parameter]
+public EventCallback<BlogListModel> ValueChanged { get; set; }
+```
+
+### Cascading Parameters
+
+Automatic parent-to-child data flow:
+
+```razor
+<!-- Parent broadcasts -->
+<CascadingValue Value="CurrentUser">
+    <ChildComponent />
+    <GrandchildComponent />
+</CascadingValue>
+
+<!-- Child receives automatically (no explicit parameter needed) -->
+@code {
+    [CascadingParameter]
+    public ClaimsPrincipal CurrentUser { get; set; }
+}
+
+<!-- Grandchild also receives -->
+@code {
+    [CascadingParameter]
+    public ClaimsPrincipal CurrentUser { get; set; }
+}
+```
+
+**Use Cases:**
+- Cascading auth state (from `App.razor`)
+- Theme settings (light/dark mode)
+- Selected context (current blog, selected user)
+
+### Required vs. Optional Parameters
+
+```csharp
+// Optional (has default)
+[Parameter]
+public string Title { get; set; } = "Default Title";
+
+// Required (must be passed)
+[Parameter(CaptureUnmatchedValues = true)]
+public Dictionary<string, object> Attributes { get; set; }
+
+// Allow content
+[Parameter]
+public RenderFragment ChildContent { get; set; }
+```
+
+## Event Handling
+
+### Click Events
+
+```razor
+<button @onclick="HandleClickAsync">Click Me</button>
+<button @onclick="() => Counter++">Increment</button>
+
+@code {
+    private int Counter = 0;
+    
+    // Must be async Task (NOT async void)
+    private async Task HandleClickAsync() {
+        await SomeAsyncOperation();
+        StateHasChanged();  // If changes don't auto-render
+    }
+}
+```
+
+### Form Events
+
+```razor
+<input @onchange="HandleInputAsync" value="@SearchTerm" />
+<input @oninput="HandleTextAsync" value="@FilterText" />
+
+@code {
+    private string SearchTerm;
+    private string FilterText;
+    
+    // onchange: Triggered on blur
+    private async Task HandleInputAsync(ChangeEventArgs e) {
+        SearchTerm = e.Value?.ToString();
+        await SearchAsync();
+    }
+    
+    // oninput: Real-time as user types
+    private async Task HandleTextAsync(ChangeEventArgs e) {
+        FilterText = e.Value?.ToString();
+        // Could debounce here
+    }
+}
+```
+
+### Keyboard Events
+
+```razor
+<input @onkeydown="HandleKeyAsync" />
+
+@code {
+    private async Task HandleKeyAsync(KeyboardEventArgs e) {
+        if (e.Key == "Enter") {
+            await SubmitAsync();
+        }
+        else if (e.Key == "Escape") {
+            Cancel();
+        }
+    }
+}
+```
+
+### Mouse Events
+
+```razor
+<div @onmouseover="HandleMouseOverAsync" @onmouseout="HandleMouseOutAsync">
+    Hover me
+</div>
+
+@code {
+    private bool IsHovered { get; set; }
+    
+    private Task HandleMouseOverAsync(MouseEventArgs e) {
+        IsHovered = true;
+        return Task.CompletedTask;
+    }
+    
+    private Task HandleMouseOutAsync(MouseEventArgs e) {
+        IsHovered = false;
+        return Task.CompletedTask;
+    }
+}
+```
+
+## Component Patterns
+
+### Parent-Child Communication
+
+**Parent → Child (Parameters):**
+```razor
+<!-- Parent.razor -->
+<Child Title="From Parent" Count="@ParentCount" />
+
+@code {
+    private int ParentCount = 10;
+}
+
+<!-- Child.razor -->
+@code {
+    [Parameter]
+    public string Title { get; set; }
+    
+    [Parameter]
+    public int Count { get; set; }
+}
+```
+
+**Child → Parent (EventCallback):**
+```razor
+<!-- Parent.razor -->
+<Child @on-CountChanged="HandleCountChanged" />
+
+@code {
+    private int Count;
+    
+    private void HandleCountChanged(int newCount) {
+        Count = newCount;
+    }
+}
+
+<!-- Child.razor -->
+<button @onclick="IncrementAsync">+</button>
+
+@code {
+    [Parameter]
+    public EventCallback<int> OnCountChanged { get; set; }
+    
+    private int Count = 0;
+    
+    private async Task IncrementAsync() {
+        Count++;
+        await OnCountChanged.InvokeAsync(Count);
+    }
+}
+```
+
+## Conditional Rendering
+
+### if/else Directives
+
+```razor
+@if (IsLoading) {
+    <p>Loading...</p>
+}
+else if (Blogs.Count > 0) {
+    <ul>
+        @foreach (var blog in Blogs) {
+            <li>@blog.Title</li>
+        }
+    </ul>
+}
+else {
+    <p>No blogs found</p>
+}
+```
+
+### switch Directives
+
+```razor
+@switch (GameState) {
+    case "playing":
+        <SolitaireBoard Game="@Game" />
+        break;
+    
+    case "won":
+        <p>You won!</p>
+        break;
+    
+    case "lost":
+        <p>Game over</p>
+        break;
+    
+    default:
+        <p>Invalid state</p>
+        break;
+}
+```
+
+## List Rendering
+
+### @foreach Directive
+
+```razor
+<div class="blogs">
+    @foreach (var blog in Blogs) {
+        <article key="@blog.Id">
+            <h3>@blog.Title</h3>
+            <p>@blog.Summary</p>
+            <a href="/blog/@blog.Id">Read more</a>
+        </article>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<BlogListModel> Blogs { get; set; }
+}
+```
+
+### key Attribute (Important!)
+
+```razor
+<!-- With key: Blazor reuses DOM elements -->
+@foreach (var blog in Blogs) {
+    <div key="@blog.Id">
+        <input @bind="blog.Title" />
+    </div>
+}
+
+<!-- Without key: Blazor recreates DOM on each render -->
+@foreach (var blog in Blogs) {
+    <div>
+        <input @bind="blog.Title" />
+    </div>
+}
+```
+
+**Use key when:**
+- List order might change
+- Items added/removed from list
+- Components maintain state
+
+## Reusable Components
+
+### Blog Card Component
+
+**Components/BlogCard.razor:**
+```razor
+<article class="blog-card">
+    <h3>@Blog.Title</h3>
+    <div class="meta">
+        <span class="author">By @Blog.Author</span>
+        <span class="date">@Blog.PublishDate.ToShortDateString()</span>
+    </div>
+    <p class="summary">@Blog.Summary</p>
+    <div class="tags">
+        @foreach (var tag in Blog.Tags) {
+            <span class="tag">@tag</span>
+        }
+    </div>
+    <button @onclick="OnReadMoreAsync">Read More</button>
+</article>
+
+@code {
+    [Parameter]
+    public BlogListModel Blog { get; set; }
+    
+    [Parameter]
+    public EventCallback OnReadMore { get; set; }
+    
+    private async Task OnReadMoreAsync() {
+        await OnReadMore.InvokeAsync();
+    }
+}
+```
+
+**Components/BlogCard.razor.css:**
+```css
+.blog-card {
+    border: 1px solid #ddd;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+}
+
+.blog-card h3 {
+    margin: 0 0 0.5rem 0;
+}
+
+.meta {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.meta > span {
+    margin-right: 1rem;
+}
+
+.tags {
+    margin: 1rem 0;
+}
+
+.tag {
+    display: inline-block;
+    background: #f0f0f0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    font-size: 0.85rem;
+}
+```
+
+**Usage:**
+```razor
+<BlogCard Blog="@blog" OnReadMore="@(() => NavigateToBlog(blog.Id))" />
+```
+
+## CSS Isolation
+
+### Scoped Styles
+
+**Components/MyComponent.razor.css:**
+```css
+/* Only applies to MyComponent.razor */
+.container {
+    padding: 1rem;
+    background: #f5f5f5;
+}
+
+/* Child selectors work */
+.container > h1 {
+    color: blue;
+}
+```
+
+**Components/MyComponent.razor:**
+```razor
+<div class="container">
+    <h1>Title</h1>
+</div>
+```
+
+**Generated HTML:**
+```html
+<div class="container b-examplenamespace-mycomponent">
+    <h1>Title</h1>
+</div>
+```
+
+### Deep CSS Selectors (:deep)
+
+```css
+/* Apply styles to child components */
+.container :deep .child-class {
+    color: red;
+}
+
+/* Access shadow DOM or nested scopes */
+:deep .external-component {
+    opacity: 0.8;
+}
+```
+
+## Examples from Solution
+
+### SolitaireBoard Component
+
+**Location:** `Components/SolitaireBoard.razor`
+
+**Pattern:**
+```razor
+@page "/Solitaire"
+@inject CardService cardService
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject NavigationManager navManager
+
+<div class="solitaire-board">
+    <div class="game-area">
+        <!-- Stock pile -->
+        <div class="stock" @onclick="DrawCardAsync">
+            @if (gameState?.Stock.Count > 0) {
+                <span>@gameState.Stock.Count</span>
+            }
+            else {
+                <span>Empty</span>
+            }
+        </div>
+        
+        <!-- Waste pile -->
+        <div class="waste">
+            @if (gameState?.Waste.Count > 0) {
+                <!-- Display top card -->
+            }
+        </div>
+        
+        <!-- Tableau & Foundations -->
+        @for (int i = 0; i < 7; i++) {
+            <div class="tableau" @ondrop="OnDropAsync" @ondragover:preventDefault>
+                @foreach (var card in gameState?.Tableau[i] ?? new List<Card>()) {
+                    <div class="card" 
+                         draggable="true" 
+                         @ondragstart="OnDragStartAsync">
+                        @card.Code
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private SolitaireGameState gameState;
+    
+    protected override async Task OnInitializedAsync() {
+        gameState = await cardService.LoadSolitaireGameAsync();
+        if (gameState == null) {
+            gameState = await cardService.InitializeSolitaireAsync();
+        }
+    }
+    
+    private async Task DrawCardAsync() {
+        gameState.DrawFromStock();
+        await cardService.SaveSolitaireGameAsync(gameState);
+        StateHasChanged();
+    }
+}
+```
+
+### NavMenu Component
+
+**Location:** `Shared/NavMenu.razor`
+
+```razor
+<nav class="navbar">
+    <a href="/" class="navbar-brand">JSnover.Net</a>
+    
+    <ul class="nav">
+        <li class="nav-item">
+            <a href="/" class="nav-link">Home</a>
+        </li>
+        <li class="nav-item">
+            <a href="/Blogs" class="nav-link">Blog</a>
+        </li>
+        <li class="nav-item">
+            <a href="/CardGames" class="nav-link">Games</a>
+        </li>
+        <li class="nav-item">
+            <a href="/Common/Contact" class="nav-link">Contact</a>
+        </li>
+    </ul>
+    
+    <div class="navbar-right">
+        <LoginDisplay />
+    </div>
+</nav>
+
+@code {
+    private bool isNavOpen = false;
+    
+    private void ToggleNav() {
+        isNavOpen = !isNavOpen;
+    }
+}
+```
+
+### LoginDisplay Component
+
+**Location:** `Shared/LoginDisplay.razor`
+
+(See Auth & Identity Instructions for full example)
+
+## Component Best Practices
+
+### ✅ Good Patterns
+
+1. **Async Initialization:**
+   ```csharp
+   // ✅ Good
+   protected override async Task OnInitializedAsync() {
+       Data = await service.GetDataAsync();
+   }
+   
+   // ❌ Bad - Synchronous
+   protected override void OnInitialized() {
+       Data = service.GetData().Result;  // Deadlock!
+   }
+   ```
+
+2. **State Changes After Async:**
+   ```csharp
+   // ✅ Good - StateHasChanged called automatically after await
+   protected override async Task OnInitializedAsync() {
+       Data = await service.GetDataAsync();  // Auto re-render
+   }
+   
+   // ⚠️ Manual refresh if needed
+   private async Task RefreshAsync() {
+       Data = await service.GetDataAsync();
+       StateHasChanged();  // Force re-render
+   }
+   ```
+
+3. **Cleanup in Dispose:**
+   ```csharp
+   // ✅ Good
+   async ValueTask IAsyncDisposable.DisposeAsync() {
+       await subscription.UnsubscribeAsync();
+   }
+   
+   // ❌ Bad - Memory leak
+   protected override async Task OnInitializedAsync() {
+       subscription = eventBus.Subscribe(HandleEvent);  // Never unsubscribed
+   }
+   ```
+
+4. **Use key in @foreach:**
+   ```razor
+   <!-- ✅ Good -->
+   @foreach (var item in Items) {
+       <div key="@item.Id">@item.Name</div>
+   }
+   
+   <!-- ❌ Bad - Recreates DOM each time -->
+   @foreach (var item in Items) {
+       <div>@item.Name</div>
+   }
+   ```
+
+5. **Parameter Validation:**
+   ```csharp
+   // ✅ Good
+   [Parameter]
+   public BlogListModel Blog { get; set; }
+   
+   protected override async Task OnParametersSetAsync() {
+       if (Blog == null) {
+           throw new ArgumentNullException(nameof(Blog));
+       }
+   }
+   ```
+
+### ❌ Anti-Patterns
+
+- **Async void event handlers:** Use `async Task` instead
+- **Inline service creation:** Inject via `[Inject]`, don't `new ServiceClass()`
+- **Blocking calls:** Never use `.Result` or `.Wait()`
+- **Direct DOM manipulation:** Let Blazor handle rendering; avoid `_divRef.querySelector()`
+- **State duplicated in parent & child:** Single source of truth; use parameters or cascading
+- **Ignoring StateHasChanged:** Blazor auto-detects changes on events; call only if needed
+
+## Child Content (Slots)
+
+### Named Slots
+
+```razor
+<!-- Parent -->
+<Card>
+    <HeaderContent>
+        <h1>Title</h1>
+    </HeaderContent>
+    <BodyContent>
+        <p>Content</p>
+    </BodyContent>
+    <FooterContent>
+        <button>Close</button>
+    </FooterContent>
+</Card>
+
+<!-- Card.razor -->
+<div class="card">
+    <div class="header">
+        @HeaderContent
+    </div>
+    <div class="body">
+        @BodyContent
+    </div>
+    <div class="footer">
+        @FooterContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment HeaderContent { get; set; }
+    
+    [Parameter]
+    public RenderFragment BodyContent { get; set; }
+    
+    [Parameter]
+    public RenderFragment FooterContent { get; set; }
+}
+```
+
+## Performance Optimization
+
+### Prevent Unnecessary Renders
+
+```csharp
+[Parameter]
+public string Data { get; set; }
+
+protected override bool ShouldRender() {
+    // Only re-render if Data actually changed
+    if (Data == _previousData) {
+        return false;
+    }
+    _previousData = Data;
+    return true;
+}
+
+private string _previousData;
+```
+
+### Lazy Loading Components
+
+```razor
+<Suspense>
+    @if (isLoaded) {
+        <ExpensiveComponent Data="@Data" />
+    }
+    else {
+        <p>Loading...</p>
+    }
+</Suspense>
+
+@code {
+    private bool isLoaded = false;
+    private DataModel Data;
+    
+    protected override async Task OnInitializedAsync() {
+        Data = await LoadExpensiveDataAsync();
+        isLoaded = true;
+    }
+}
+```
+
+## Debugging Components
+
+### Debug Output
+
+```csharp
+@code {
+    protected override async Task OnInitializedAsync() {
+        System.Diagnostics.Debug.WriteLine($"Initializing: {nameof(MyComponent)}");
+        await base.OnInitializedAsync();
+    }
+}
+```
+
+### Browser DevTools
+
+- Inspect component HTML in Elements tab
+- Check component `.razor.css` scoping (`b-examplenamespace-component`)
+- Use browser console for JavaScript interop debugging
+
+## References
+
+- Parent Architecture: [jsnover.net/.copilot-instructions](../../.copilot-instructions)
+- Pages & Routing: [Pages/.copilot-instructions](../Pages/.copilot-instructions)
+- Games Components: [GameLogic/.copilot-instructions](../GameLogic/.copilot-instructions)
+- Auth (LoginDisplay): [Areas/.copilot-instructions](../Areas/.copilot-instructions)
+
+---
+
+**Last Updated:** February 2026 | **Framework:** Blazor Server-side | **Pattern:** Reactive components

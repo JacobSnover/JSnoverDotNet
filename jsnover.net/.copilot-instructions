@@ -1,0 +1,320 @@
+# JSnoverDotNet Blazor Solution - Copilot Instructions
+
+**Project Overview:** ASP.NET Core Blazor Server-side portfolio application combining a blog/content management system with interactive card games (Solitaire, Black Jack) and user authentication. Target framework: .NET 9.0.
+
+## Architecture Overview
+
+The solution follows an **N-tier architecture** with clear separation of concerns:
+
+```
+Presentation Layer (Pages/, Components/, Shared/)
+         ↓
+Service Layer (Infrastructure/Services/)
+         ↓
+Repository/Data Access Layer (Infrastructure/SqlRepo/JsnoRepo.cs)
+         ↓
+Data Layer (Data/*, Models/*, Migrations/)
+```
+
+### Core Design Principles
+
+1. **Dependency Injection (DI):** Services are registered in `Startup.cs` and injected into Razor components via `@inject` directive
+2. **DTO Pattern:** Domain models in `/Models/` are wrapped in DTOs (`*Model` classes in `/DataTransferObjects/`) for presentation layer communication
+3. **Static Repository:** `JsnoRepo` (Infrastructure/SqlRepo/) provides static data access methods; creates new DbContext per operation
+4. **Service Layer Abstraction:** `BlogService`, `CardService`, `EmailService`, `ToolService` handle business logic; components call services, never repositories directly
+5. **Session Storage:** `Blazored.SessionStorage` persists game state client-side between page refreshes
+6. **Static Constants:** `Constants/` folder holds enum-like configuration values (`BlogIndexes.cs`, `KeyValues.cs`, `Game/`)
+
+## Technology Stack
+
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| **Web Framework** | ASP.NET Core Blazor Server-side (9.0) | Real-time interactivity via SignalR |
+| **Database** | Entity Framework Core 9.0 + SQL Server | Two DbContexts: ApplicationDbContext (Identity), jsnoverdotnetdbContext (Business) |
+| **Authentication** | ASP.NET Core Identity 9.0 | Role-based authorization, cascading auth state |
+| **Email** | SendGrid 9.29.3 | Blog comments notification, subscriber emails |
+| **Networking** | Azure SignalR 1.22.0 | Real-time WebSocket communication |
+| **Session Mgmt** | Blazored.SessionStorage 2.2.0 | Client-side game state persistence |
+| **Responsive UI** | BlazorPro.BlazorSize 6.0.0 | Device detection for responsive layouts |
+| **Testing** | xUnit (implied by UnitTests.csproj) | Currently minimal coverage |
+
+## Solution Structure & Navigation
+
+```
+jsnover.net/
+├── .copilot-instructions                        # ROOT: This file
+├── jsnover.net.blazor/
+│   ├── .copilot-instructions                    # SEE: Area-specific instructions below
+│   ├── Program.cs                               # Host builder (entry point)
+│   ├── Startup.cs                               # DI registration & middleware configuration
+│   ├── App.razor                                # Root routing component, cascading auth
+│   ├── Pages/
+│   │   ├── .copilot-instructions                # Pages/Routing patterns guide
+│   │   ├── Index.razor                          # Home page
+│   │   ├── BlogPost/                            # Blog management area
+│   │   │   └── [See: Blog Instructions]
+│   │   ├── Games/                               # Game selection page
+│   │   │   └── [See: Games Instructions]
+│   │   ├── Common/                              # Contact form, other utilities
+│   │   └── Shared/                              # Layout pages (_Host.cshtml, Error.cshtml)
+│   ├── Components/
+│   │   ├── .copilot-instructions                # Blazor component patterns guide
+│   │   ├── SolitaireBoard.razor                 # Solitaire UI component
+│   │   ├── BlackJackBoard.razor                 # Black Jack UI component
+│   │   ├── CardGames.razor                      # Game selection UI
+│   │   └── [Other UI components]
+│   ├── Infrastructure/
+│   │   ├── .copilot-instructions                # [See: Infrastructure Instructions]
+│   │   ├── Services/
+│   │   │   ├── BlogService.cs                   # Blog CRUD & querying
+│   │   │   ├── CardService.cs                   # Game deck initialization, session mgmt
+│   │   │   ├── EmailService.cs                  # SendGrid integration
+│   │   │   └── ToolService.cs                   # Visitor tracking, milestones
+│   │   ├── SqlRepo/
+│   │   │   └── JsnoRepo.cs                      # Static data access layer
+│   │   └── Utilities/
+│   │       ├── CardComparer.cs                  # Game logic validation
+│   │       ├── RegexUtilities.cs                # Email validation, text processing
+│   │       └── Submit.cs                        # Contact form handling
+│   ├── GameLogic/
+│   │   └── .copilot-instructions                # [See: Games Instructions]
+│   │   └── SolitaireGameState.cs                # Card game state machine (249 lines)
+│   ├── Data/
+│   │   ├── .copilot-instructions                # [See: Data Layer Instructions]
+│   │   ├── ApplicationDbContext.cs              # Identity context
+│   │   ├── jsnoverdotnetdbContext.cs            # Business domain context (262 lines)
+│   │   └── Migrations/
+│   ├── Models/
+│   │   ├── Blog.cs                              # Blog domain model
+│   │   ├── Card.cs, CardDraw.cs, NewDeck.cs    # Game models
+│   │   ├── AspNetUsers.cs                       # Identity models
+│   │   ├── Tag.cs, Photos.cs, Commentors.cs    # Blog relationships
+│   │   ├── ContactRequest.cs, VisitorCounter.cs # Utility models
+│   │   └── [Other models]
+│   ├── DataTransferObjects/
+│   │   ├── BlogModels/                          # BlogDisplayModel, BlogEditModel, etc.
+│   │   ├── Common/                              # ContactModel, ContextOptions
+│   │   └── Interfaces/                          # IDtoMapper (currently empty)
+│   ├── Constants/
+│   │   ├── BlogIndexes.cs                       # Blog array indexing constants
+│   │   ├── KeyValues.cs                         # Enum-like configuration
+│   │   ├── Keywords.cs                          # Blog search keywords
+│   │   └── Game/
+│   │       ├── SolitaireImages.cs               # Card image URL constants
+│   │       ├── BlackJack.cs                     # Game rules
+│   │       └── General.cs                       # Common game constants
+│   ├── Shared/
+│   │   ├── MainLayout.razor                     # Master layout, newsletter signup
+│   │   ├── NavMenu.razor                        # Navigation menu
+│   │   └── LoginDisplay.razor                   # Auth UI
+│   ├── Areas/Identity/                          # ASP.NET Core Identity scaffolded files
+│   ├── wwwroot/                                 # Static files (CSS, JS, images)
+│   └── jsnover.net.blazor.csproj
+├── UnitTests/
+│   ├── .copilot-instructions                    # [See: Testing Instructions]
+│   ├── SolitaireGameStateTests.cs               # [EMPTY - expand here]
+│   └── UnitTest1.cs                             # [Placeholder]
+└── README.md, NecessaryCommands.txt, ScaffoldingReadMe.txt
+```
+
+## Area-Specific Instructions
+
+Each major area has dedicated instructions. Choose based on your task:
+
+- **Blog/Content Management:** → [jsnover.net/.copilot-instructions (BLOG SECTION)]
+  - DTO patterns, service layer, search/filtering, tags, comments, emails
+- **Card Games (Solitaire/BlackJack):** → [jsnover.net/jsnover.net.blazor/GameLogic/.copilot-instructions]
+  - Game state machines, session persistence, External API integration, component patterns
+- **Infrastructure & Services:** → [jsnover.net/jsnover.net.blazor/Infrastructure/.copilot-instructions]
+  - Service layer architecture, repository pattern, email integration, DI patterns
+- **Data Layer:** → [jsnover.net/jsnover.net.blazor/Data/.copilot-instructions]
+  - DbContexts, entities, relationships, migrations, connection strings
+- **Authentication & Identity:** → [jsnover.net/jsnover.net.blazor/Areas/.copilot-instructions]
+  - Identity integration, role-based auth, cascading auth state, authorization policies
+- **Testing Strategy:** → [UnitTests/.copilot-instructions]
+  - Unit testing patterns, gaps, mocking strategies, integration testing
+- **Components (Blazor):** → [jsnover.net/jsnover.net.blazor/Components/.copilot-instructions]
+  - Razor component lifecycle, parameter binding, event handling, state management
+- **Pages & Routing:** → [jsnover.net/jsnover.net.blazor/Pages/.copilot-instructions]
+  - Route definitions, parameter passing, layouts, error handling
+
+## Cross-Cutting Concerns
+
+### Dependency Injection Pattern
+
+**Registration** (in `Startup.cs`):
+```csharp
+services.AddScoped<BlogService>();        // Scoped: new instance per HTTP request
+services.AddScoped<CardService>();
+services.AddSingleton<BlogListModel>();   // Singleton: cached across requests
+services.AddBlazoredSessionStorage();
+services.AddDbContext<ApplicationDbContext>();
+services.AddDbContext<jsnoverdotnetdbContext>();
+```
+
+**Usage** (in Razor components):
+```razor
+@inject BlogService blogService
+@inject CardService cardService
+@code {
+    protected override async Task OnInitializedAsync() {
+        var blogs = await blogService.GetBlogsAsync();
+    }
+}
+```
+
+### Async/Await Standards
+
+- **Rule:** All I/O operations (database, email, HTTP) must be async
+- **Pattern:** Use `async Task` in services, `async Task<T>` for return values
+- **Lifecycle:** `OnInitializedAsync()` in components for data loading
+- **Gotcha:** Blazor Server-side doesn't support `async void` event handlers; use `async Task` instead
+
+### Error Handling Strategy
+
+1. **Services:** Return null or throw `InvalidOperationException` on business logic failures
+2. **Components:** Wrap service calls in try-catch, display error UI
+3. **Repository (JsnoRepo):** Catches DbException, logs, re-throws as `InvalidOperationException`
+4. **Email:** SendGrid exceptions logged, non-blocking (failures don't crash the app)
+
+**Example:**
+```csharp
+try {
+    var blog = await blogService.GetBlogByIdAsync(id);
+    if (blog == null) { /* handle not found */ }
+} catch (InvalidOperationException ex) {
+    errorMessage = $"Failed to load blog: {ex.Message}";
+}
+```
+
+### Naming Conventions
+
+| Artifact | Convention | Example |
+|----------|-----------|---------|
+| **Razor Pages** | PascalCase.razor | `Blogs.razor`, `EditBlog.razor` |
+| **Razor Components** | PascalCase.razor | `SolitaireBoard.razor`, `NavMenu.razor` |
+| **Services** | `{Domain}Service` | `BlogService`, `CardService` |
+| **DTOs** | `{Domain}{Purpose}Model` | `BlogDisplayModel`, `BlogEditModel` |
+| **Domain Models** | PascalCase, singular | `Blog`, `Card`, `Commentor` |
+| **Collections** | Plural | `blogs`, `cards`, `commentors` |
+| **Booleans** | `is*`, `has*` | `isBlogPublished`, `hasComments` |
+| **Async Methods** | Suffix `Async` | `GetBlogsAsync()`, `CreateBlogAsync()` |
+| **Constants** | UPPER_SNAKE_CASE or PascalCase | `MAX_BLOG_LENGTH` or `DefaultBlogPageSize` |
+
+## Common Architectural Decisions & Anti-Patterns
+
+### ✅ Good Patterns
+
+- **DTO Separation:** UI receives `BlogDisplayModel`, not raw `Blog` entity
+- **Service Layer:** Components never call repository directly; all logic flows through services
+- **DI for Services:** All services registered in DI container, injected into components
+- **Static Constants:** Configuration values centralized in `Constants/` folder
+- **Cascading Auth State:** Authentication state automatically available in all child components
+
+### ⚠️ Anti-Patterns (Known Issues)
+
+1. **Static Repository (`JsnoRepo`):** Creates new DbContext per call; no connection pooling, hard to test
+   - **Impact:** Inefficient database connection management
+   - **Refactoring:** Convert to scoped service with DI integration
+   - **Current Workaround:** Acceptable for this site's traffic; document when refactoring
+
+2. **Array-Based Indexing (`BlogIndexes.cs`):** Constants like `Blog_Title = 0`, `Blog_Author = 1` for array offsets
+   - **Impact:** Fragile; easy to get indices wrong; refactoring breaks indexing
+   - **Refactoring:** Replace with `Dictionary<string, BlogProperty>` or typed records
+   - **Gotcha:** If modifying BlogIndexes, update all usages in BlogService
+
+3. **Two DbContexts:** `ApplicationDbContext` (Identity) vs `jsnoverdotnetdbContext` (Business)
+   - **Impact:** No transaction support across Identity and domain models
+   - **Rationale:** Scaffolded separately from database; now tightly coupled to existing schema
+   - **Workaround:** Keep separate; don't attempt cross-context transactions
+
+4. **Static Method Patterns:** `EmailService` uses static internal methods
+   - **Impact:** Cannot be mocked for testing; hard-coded configuration
+   - **Refactoring:** Consider instance methods with DI for configuration
+
+5. **Blazored.SessionStorage Coupling:** `CardService` directly depends on session storage
+   - **Impact:** Hard to swap persistence strategy; state tied to browser session
+   - **Refactoring:** Inject `IGameStateProvider` abstraction
+
+6. **Email Service Without Resilience:** SendGrid failures are not retried; no circuit breaker
+   - **Impact:** Transient network issues cause lost emails
+   - **Mitigation:** Add Polly retry policies in future updates
+
+### ❌ Anti-Patterns to Avoid
+
+- **Components directly calling repository:** Always go through service layer
+- **Mixing sync/async:** Don't mix `Task` and `Task<T>` incompletely; be consistent across call chains
+- **Magic string keys:** Use constants for session storage keys, configuration keys, email template IDs
+- **Hardcoded connection strings:** Always use `ContextOptions` or `Configuration`
+- **Large component files:** Keep component code-behind under 300 lines; extract complex logic to services
+- **Ignoring null checks:** Always check service outputs; null returns are expected
+
+## Development Workflow
+
+### Adding a New Feature
+
+1. **Domain Model:** Create entity in `/Models/` if needed; add DbSet to appropriate DbContext
+2. **DTO:** Create `*Model` class in `/DataTransferObjects/` for presentation
+3. **Service:** Add method to appropriate service in `/Infrastructure/Services/`
+4. **Component/Page:** Create Razor component in `/Components/` or `/Pages/`
+5. **Tests:** Add unit tests in `/UnitTests/` (see Testing Instructions)
+6. **Refactor:** Check for anti-patterns; consider static dependencies that should be injected
+
+### Database Changes
+
+1. **Add Model:** Update entity in `/Models/`
+2. **Add DbSet:** Register in `jsnoverdotnetdbContext.OnModelCreating()`
+3. **Create Migration:** `Add-Migration FeatureName -OutputDir Data/Migrations`
+4. **Update Database:** `Update-Database`
+5. **Serialize:** Commit migration file to source control
+
+## Key Gotchas & Tips
+
+| Issue | Solution |
+|-------|----------|
+| **Component not updating after service call** | Ensure service method is `async Task<T>`; await in `OnInitializedAsync()` |
+| **Session storage not persisting** | Key must be consistent string; add using `AddBlazoredSessionStorage()` in DI |
+| **Authorization always fails** | Check `CascadingAuthenticationState` wraps router in `App.razor` |
+| **DbContext disposal error** | JsnoRepo creates new context per call—this is expected; don't dispose manually |
+| **SendGrid emails not sending** | Check API key in `ContextOptions.SendGridKey`; validate "from" email verified in SendGrid |
+| **Game state lost on page refresh** | Implement game state persistence in `CardService` session storage callback |
+| **Route parameters not binding** | Use `@page "/route/{param}"` and `[Parameter] public string Param { get; set; }` |
+| **Circular DI dependency** | Avoid injecting service A into service B if B is also needed by A; use factory pattern |
+
+## Performance Considerations
+
+1. **BlogListModel Caching:** Registered as `Singleton`; not updated between deployments (reload app to refresh)
+2. **Session Storage Size:** O(1000) game states possible; monitor browser local storage limit
+3. **API Calls:** CardService calls deckofcardsapi.com; consider caching deck initialization
+4. **Database Queries:** JsnoRepo doesn't use `.AsNoTracking()`; enable where appropriate for read-only operations
+5. **SignalR:** Real-time updates via Azure SignalR; scale-out configured in `Startup.cs`
+
+## Integration Points
+
+- **External APIs:** `deckofcardsapi.com` for card deck initialization (via CardService)
+- **Email:** SendGrid for blog comment notifications and subscriber emails
+- **Auth:** ASP.NET Core Identity (SQL Server-backed)
+- **Session:** Browser local storage + server session for Blazor Server persistence
+- **Monitoring:** Visitor counter tracked in VisitorCounter model and ToolService
+
+## Recommended Reading
+
+- First-time setup: Read **Data Layer Instructions** (schema overview) + **Architecture Overview** (this file)
+- Adding blog features: Read **Blog Instructions** first
+- Adding game features: Read **Games Instructions** first
+- Troubleshooting data issues: Read **Data Layer Instructions** + **Infrastructure Instructions**
+- Testing: Read **Testing Instructions** + area-specific testing patterns
+- Deploying: Check **NecessaryCommands.txt** for migration commands
+
+## Support & Questions
+
+When asking Copilot for help:
+- Be specific about which area you're working in (use file path auto-completion)
+- Ask about patterns: "What DTO pattern should I use for X?"
+- Ask about gotchas: "What are common mistakes when adding a new game?"
+- Ask about examples: "Show me how CardService handles session storage"
+- Reference these instructions: "According to the architecture, should I call the repository directly here?"
+
+---
+
+**Last Updated:** February 2026 | **.NET 9.0** | **Blazor Server-side**

@@ -1,0 +1,732 @@
+# Infrastructure & Services Layer - Copilot Instructions
+
+**Focus Area:** Business logic, data access abstraction, service layer patterns, dependency injection, utilities, email integration.
+
+**Key Files:**
+- Services: `Infrastructure/Services/BlogService.cs`, `CardService.cs`, `EmailService.cs`, `ToolService.cs`
+- Repository: `Infrastructure/SqlRepo/JsnoRepo.cs`
+- Utilities: `Infrastructure/Utilities/CardComparer.cs`, `RegexUtilities.cs`, `Submit.cs`
+- Configuration: `Startup.cs`, `Program.cs`, `DataTransferObjects/Common/ContextOptions.cs`
+
+## Service Layer Architecture
+
+The Infrastructure layer implements a **3-tier data flow pattern**:
+
+```
+Components/Pages (Presentation)
+    ↓ @inject ServiceName
+Services (BusinessLogic)
+    ├─ BlogService
+    ├─ CardService
+    ├─ EmailService
+    └─ ToolService
+    ↓ calls
+Repository (JsnoRepo - Data Access)
+    ↓ creates DbContext
+DbContext (EF Core Abstraction)
+    ↓ executes SQL
+SQL Server (Database)
+```
+
+### Design Principle
+
+**Never call repository directly from components:** All data access flows through services. This provides:
+- Centralized business logic
+- Testable, mockable interfaces
+- Decoupling from persistence details
+- Consistent error handling
+
+## Dependency Injection (DI) Registration
+
+**Location:** `Startup.cs` - `ConfigureServices()` method
+
+### Service Registration Pattern
+
+```csharp
+public void ConfigureServices(IServiceCollection services) {
+    // DbContexts
+    services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+    
+    services.AddDbContext<jsnoverdotnetdbContext>(options =>
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+    
+    // Identity
+    services.AddDefaultIdentity<IdentityUser>()
+        .AddRoles<IdentityRole>()
+        .AddEntityFrameworkStores<ApplicationDbContext>();
+    
+    // Domain Services (Scoped = new instance per HTTP request)
+    services.AddScoped<BlogService>();
+    services.AddScoped<CardService>();
+    services.AddScoped<EmailService>();  // If made non-static
+    services.AddScoped<ToolService>();
+    
+    // DTOs/Models (Singleton = one instance for app lifetime)
+    services.AddSingleton<BlogListModel>();  // Cached blog list
+    
+    // Session Storage
+    services.AddBlazoredSessionStorage();
+    
+    // Razor Components
+    services.AddRazorPages();
+    services.AddServerSideBlazor()
+        .AddCircuitOptions(options => {
+            options.DetailedErrors = true;
+        });
+    
+    // SignalR (for real-time updates)
+    services.AddSignalR().AddAzureSignalR();
+}
+```
+
+### Service Lifetimes
+
+| Lifetime | Behavior | Use Case |
+|----------|----------|----------|
+| **Transient** | New instance each call | Stateless utilities |
+| **Scoped** | New instance per HTTP request | Services with request-scoped dependencies |
+| **Singleton** | One instance for app lifetime | Shared caches, immutable config |
+
+**Example:**
+```csharp
+// Scoped (new per request)
+services.AddScoped<BlogService>();  // ✅ Correct: Services need fresh DbContext
+
+// Singleton (one for all)
+services.AddSingleton<BlogListModel>();  // ✅ Correct: Cached data doesn't change per request
+services.AddSingleton<IConfiguration>(Configuration);  // ✅ Correct: Config is immutable
+
+// Transient (one per call)
+services.AddTransient<EmailValidator>();  // ✅ Correct: Stateless utility
+```
+
+## Service Layer Deep Dive
+
+### BlogService
+
+**Responsibility:** Blog CRUD operations, searching, related entities
+
+**Core Pattern:**
+```csharp
+public class BlogService {
+    public async Task<BlogDisplayModel> GetBlogByIdAsync(int id) {
+        var blog = await JsnoRepo.GetBlogByIdAsync(id);
+        if (blog == null) return null;  // Not found
+        return ConvertToBlogDisplayModel(blog);  // Domain → DTO
+    }
+    
+    public async Task<Blog> CreateBlogAsync(NewBlogModel model) {
+        ValidateModel(model);  // Throws on invalid
+        var blog = new Blog {
+            BlogTitle = model.Title,
+            BlogAuthor = model.Author,
+            BlogContent = model.Content,
+            DatePublished = DateTime.UtcNow
+        };
+        return await JsnoRepo.AddBlogAsync(blog);
+    }
+}
+```
+
+**Key Methods:** (See Blog Instructions for details)
+- `GetBlogsAsync()`, `GetBlogByIdAsync()`, `SearchBlogsByTitleAsync()`, `SearchBlogsByTagAsync()`
+- `CreateBlogAsync()`, `UpdateBlogAsync()`, `DeleteBlogAsync()`
+- `AddCommentAsync()`, `SubscribeEmail()`, `NotifySubscribersAsync()`
+
+**Anti-Pattern ⚠️:** `BlogListModel` singleton caching persists until app restart
+- Pro: Performance (no DB queries for list)
+- Con: Stale data if blogs updated frequently
+- **Workaround:** Invalidate cache on blog creation/deletion
+
+---
+
+### CardService
+
+**Responsibility:** Game state management, session persistence, deck initialization
+
+**Core Pattern:**
+```csharp
+public class CardService {
+    private readonly ISessionStorageService _sessionStorage;
+    private readonly HttpClient _httpClient;
+    
+    public async Task<NewDeck> InitializeDeckAsync() {
+        var response = await _httpClient.GetAsync(
+            "https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1");
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<NewDeck>(json);
+    }
+    
+    public async Task SaveSolitaireGameAsync(SolitaireGameState game) {
+        await _sessionStorage.SetItemAsync("game_solitaire", game);
+    }
+    
+    public async Task<SolitaireGameState> LoadSolitaireGameAsync() {
+        return await _sessionStorage.GetItemAsync<SolitaireGameState>("game_solitaire");
+    }
+}
+```
+
+**Key Methods:**
+- `InitializeDeckAsync()` - Call deckofcardsapi.com
+- `InitializeSolitaireAsync()` - Setup new solitaire game
+- `SaveSolitaireGameAsync()`, `LoadSolitaireGameAsync()` - Game persistence
+- `SaveBlackJackGameAsync()`, `LoadBlackJackGameAsync()` - Game persistence
+
+**Anti-Pattern ⚠️:** No retry logic or error handling for external API
+- **Issue:** If deckofcardsapi.com down, game won't start
+- **Fix:** Add try-catch with fallback to local deck generation
+
+---
+
+### EmailService
+
+**Responsibility:** SendGrid integration, email sending to subscribers and users
+
+**Current Implementation:**
+```csharp
+public static class EmailService {  // BAD: Static methods
+    public static async Task SendEmailAsync(string toEmail, string subject, string htmlBody) {
+        var client = new SendGridClient(ContextOptions.SendGridKey);
+        var from = new EmailAddress("noreply@jsnover.net");
+        var to = new EmailAddress(toEmail);
+        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlBody);
+        var response = await client.SendEmailAsync(msg);
+        return response.StatusCode == HttpStatusCode.Accepted;
+    }
+}
+```
+
+**When Emails Sent:**
+- Blog comment notification → all subscribers
+- New blog published → all subscribers
+- Contact form submission → site owner
+
+**Anti-Pattern ⚠️:** Static methods prevent mocking/testing
+- **Refactoring:** Convert to instance service with DI
+  ```csharp
+  public class EmailService {
+      private readonly SendGridClient _client;
+      
+      public EmailService(IConfiguration config) {
+          _client = new SendGridClient(config["SendGrid:ApiKey"]);
+      }
+      
+      public async Task<bool> SendEmailAsync(string to, string subject, string body) {
+          // ...
+      }
+  }
+  ```
+
+**Configuration:**
+- **API Key:** `ContextOptions.SendGridKey` (should be from config, not hardcoded)
+- **From Address:** `noreply@jsnover.net` (must be verified in SendGrid)
+
+---
+
+### ToolService
+
+**Responsibility:** Visitor tracking, metrics, milestones
+
+**Methods:**
+- `IncrementVisitorCountAsync()` - Track page visits
+- `GetVisitorMetricsAsync()` - Retrieve visitor stats
+- `CheckMilestoneAsync()` - Notify on visitor milestones (e.g., 1000 visitors)
+
+**Pattern:**
+```csharp
+public class ToolService {
+    public async Task IncrementVisitorCountAsync() {
+        var counter = await JsnoRepo.GetVisitorCounterAsync();
+        counter.TotalVisits++;
+        counter.LastVisitTime = DateTime.UtcNow;
+        await JsnoRepo.UpdateVisitorCounterAsync(counter);
+        
+        // Check milestone
+        if (counter.TotalVisits % 100 == 0) {
+            await EmailService.SendEmailAsync(
+                "owner@jsnover.net",
+                $"Milestone: {counter.TotalVisits} visitors!",
+                $"Congratulations! Your site reached {counter.TotalVisits} visits."
+            );
+        }
+    }
+}
+```
+
+## Repository Pattern (JsnoRepo)
+
+**Location:** `Infrastructure/SqlRepo/JsnoRepo.cs`
+
+**Pattern:** Static class with static methods for all data operations
+
+### Why Static? (Anti-Pattern ⚠️)
+
+```csharp
+public static class JsnoRepo {
+    public static async Task<Blog> GetBlogByIdAsync(int id) {
+        using (var context = new jsnoverdotnetdbContext()) {  // Creates new context per call
+            return await context.Blogs.FirstOrDefaultAsync(b => b.BlogId == id);
+        }
+    }
+}
+```
+
+**Pros:**
+- Simple to use: No DI registration required
+- No instance state: Pure data operations
+
+**Cons:**
+- ❌ Creates new DbContext per call (inefficient)
+- ❌ Hard to test (no mocking)
+- ❌ No connection pooling optimization
+- ❌ No unit-of-work pattern support
+
+### Refactoring Target
+
+**Better Approach: Scoped Service with DI**
+
+```csharp
+// Instead of: public static class JsnoRepo
+// Use:
+public interface IBlogRepository {
+    Task<Blog> GetBlogByIdAsync(int id);
+    Task<Blog> AddBlogAsync(Blog blog);
+}
+
+public class BlogRepository : IBlogRepository {
+    private readonly jsnoverdotnetdbContext _context;
+    
+    public BlogRepository(jsnoverdotnetdbContext context) {
+        _context = context;  // Same context per request (scoped)
+    }
+    
+    public async Task<Blog> GetBlogByIdAsync(int id) {
+        return await _context.Blogs.FirstOrDefaultAsync(b => b.BlogId == id);
+    }
+}
+
+// In Startup.cs
+services.AddScoped<IBlogRepository, BlogRepository>();
+```
+
+### Current Methods
+
+**Blog Operations:**
+- `GetBlogByIdAsync(id)` → Single blog or null
+- `GetBlogsAsync()` → All blogs
+- `AddBlogAsync(blog)` → Insert, return with ID
+- `UpdateBlogAsync(blog)` → Modify existing
+- `DeleteBlogAsync(id)` → Remove blog and related data
+
+**Tag Operations:**
+- `GetBlogTagsAsync(blogId)` → Tags for blog
+- `AddBlogTagAsync(blogId, tagName)` → Create tag reference
+- `RemoveBlogTagAsync(blogId, tagName)` → Delete tag
+
+**Comment Operations:**
+- `GetBlogCommentsAsync(blogId)` → Comments on blog
+- `AddCommentAsync(commentor)` → New comment
+- `DeleteCommentAsync(commentId)` → Remove comment
+
+**Visitor Operations:**
+- `IncrementVisitorCountAsync()` → Track visit
+- `GetVisitorCountAsync()` → Total visits
+
+**Async Pattern:**
+```csharp
+public static async Task<List<Blog>> GetBlogsAsync() {
+    using (var context = new jsnoverdotnetdbContext()) {
+        return await context.Blogs
+            .Include(b => b.Tags)
+            .ToListAsync();  // MUST use .ToListAsync() in async method
+    }
+}
+```
+
+## Utilities
+
+### CardComparer
+
+**Location:** `Infrastructure/Utilities/CardComparer.cs`
+**Purpose:** Validate card moves for Solitaire and Black Jack
+
+(See Games Instructions for details)
+
+---
+
+### RegexUtilities
+
+**Purpose:** Email validation, text processing
+
+```csharp
+public static class RegexUtilities {
+    // Email validation
+    public static bool ValidateEmail(string email) {
+        var pattern = @"^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
+        return Regex.IsMatch(email, pattern);
+    }
+    
+    // Phone validation (US format)
+    public static bool ValidatePhone(string phone) {
+        var pattern = @"^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$";
+        return Regex.IsMatch(phone, pattern);
+    }
+    
+    // Remove HTML tags
+    public static string StripHtmlTags(string input) {
+        return Regex.Replace(input, "<[^>]*>", "");
+    }
+}
+```
+
+**Usage:**
+```csharp
+if (!RegexUtilities.ValidateEmail(userEmail)) {
+    throw new InvalidOperationException("Invalid email format");
+}
+```
+
+---
+
+### Submit
+
+**Location:** `Infrastructure/Utilities/Submit.cs`
+**Purpose:** Contact form submission processing
+
+```csharp
+public static class Submit {
+    public static async Task<bool> ProcessContactRequestAsync(string name, string email, string message) {
+        // Validate
+        if (string.IsNullOrWhiteSpace(message) || message.Length > 1000) {
+            throw new InvalidOperationException("Message invalid");
+        }
+        if (!RegexUtilities.ValidateEmail(email)) {
+            throw new InvalidOperationException("Invalid email");
+        }
+        
+        // Create model
+        var request = new ContactRequest {
+            Name = name,
+            Email = email,
+            Message = message,
+            DateSubmitted = DateTime.UtcNow
+        };
+        
+        // Store in database
+        await JsnoRepo.AddContactRequestAsync(request);
+        
+        // Send email to owner
+        await EmailService.SendEmailAsync(
+            "owner@jsnover.net",
+            $"New contact request from {name}",
+            message
+        );
+        
+        return true;
+    }
+}
+```
+
+## Configuration Management
+
+### ContextOptions
+
+**Location:** `DataTransferObjects/Common/ContextOptions.cs`
+
+**Purpose:** Centralized configuration for database, email, third-party services
+
+```csharp
+public static class ContextOptions {
+    // Database
+    public static string ConnectionString { get; set; }
+    
+    // Email
+    public static string SendGridKey { get; set; }
+    
+    // Azure
+    public static string SignalRConnectionString { get; set; }
+    
+    // Games
+    public static string DeckOfCardsApiUrl { get; } = "https://deckofcardsapi.com/api";
+}
+```
+
+**Anti-Pattern ⚠️:** Static properties should be set from `IConfiguration` in `Startup.cs`, not hardcoded
+
+**Current Limitation:**
+- No null-safety; assumes all keys set before startup
+- Not injectable; makes testability harder
+- Values not validated
+
+**Refactoring:**
+```csharp
+// Create Options class
+public class ApplicationOptions {
+    public string ConnectionString { get; set; }
+    public string SendGridKey { get; set; }
+    public string SignalRConnectionString { get; set; }
+}
+
+// In Startup.cs
+services.Configure<ApplicationOptions>(Configuration.GetSection("Application"));
+
+// In services
+public class EmailService {
+    private readonly ApplicationOptions _options;
+    
+    public EmailService(IOptions<ApplicationOptions> options) {
+        _options = options.Value;
+    }
+}
+```
+
+## Error Handling Strategy
+
+### Service Layer Error Handling
+
+**Pattern:** Throw `InvalidOperationException` for business logic failures; log for debugging
+
+```csharp
+public async Task<Blog> CreateBlogAsync(NewBlogModel model) {
+    try {
+        ValidateModel(model);
+        var blog = new Blog { /* ... */ };
+        return await JsnoRepo.AddBlogAsync(blog);
+    } catch (DbUpdateException ex) {
+        // Log: Database constraint violation
+        throw new InvalidOperationException($"Failed to create blog: {ex.InnerException?.Message}", ex);
+    }
+}
+```
+
+### Component Layer Error Handling
+
+**Pattern:** Wrap service calls in try-catch; display error UI
+
+```razor
+@code {
+    private string errorMessage;
+    
+    private async Task SaveBlogAsync() {
+        try {
+            await blogService.CreateBlogAsync(model);
+            StateHasChanged();
+        } catch (InvalidOperationException ex) {
+            errorMessage = ex.Message;
+            StateHasChanged();
+        }
+    }
+}
+```
+
+### Database Layer Error Handling
+
+**In JsnoRepo:**
+```csharp
+public static async Task<Blog> GetBlogByIdAsync(int id) {
+    try {
+        using (var context = new jsnoverdotnetdbContext()) {
+            return await context.Blogs.FirstOrDefaultAsync(b => b.BlogId == id);
+        }
+    } catch (InvalidOperationException ex) {
+        // DbContext disposed or connection failed
+        throw new InvalidOperationException("Database access failed", ex);
+    }
+}
+```
+
+## Testing Services
+
+### Mocking Pattern
+
+```csharp
+public class BlogServiceTests {
+    private readonly Mock<IRepository> _mockRepo;
+    private readonly BlogService _service;
+    
+    public BlogServiceTests() {
+        _mockRepo = new Mock<IRepository>();
+        _service = new BlogService(_mockRepo.Object);  // Inject mock
+    }
+    
+    [Fact]
+    public async Task CreateBlogAsync_WithValidModel_CallsRepository() {
+        var model = new NewBlogModel { Title = "Test" };
+        
+        await _service.CreateBlogAsync(model);
+        
+        _mockRepo.Verify(r => r.AddBlogAsync(It.IsAny<Blog>()), Times.Once);
+    }
+}
+```
+
+### Current Testing Gaps
+
+- ❌ No BlogService tests
+- ❌ No CardService tests (especially API integration)
+- ❌ No EmailService tests
+- ❌ No ToolService tests
+- ❌ JsnoRepo static methods not testable; should refactor
+
+## Async/Await Standards
+
+### Rule: All I/O Must Be Async
+
+```csharp
+// ✅ Good: Async database operation
+public async Task<Blog> GetBlogAsync(int id) {
+    using (var context = new jsnoverdotnetdbContext()) {
+        return await context.Blogs.FirstOrDefaultAsync(b => b.BlogId == id);
+    }
+}
+
+// ❌ Bad: Synchronous database operation (blocks thread)
+public Blog GetBlog(int id) {
+    using (var context = new jsnoverdotnetdbContext()) {
+        return context.Blogs.FirstOrDefault(b => b.BlogId == id);
+    }
+}
+```
+
+### Async Calling Pattern
+
+```csharp
+// In component
+protected override async Task OnInitializedAsync() {
+    var blog = await blogService.GetBlogAsync(id);  // AWAIT required
+}
+
+// NOT:
+protected override async Task OnInitializedAsync() {
+    var blog = blogService.GetBlogAsync(id).Result;  // DON'T do this (deadlock risk)
+}
+```
+
+## Common Tasks
+
+### Add a New Service
+
+1. **Create class** in `Infrastructure/Services/`
+2. **Register in DI** in `Startup.ConfigureServices()` as `.AddScoped<NewService>()`
+3. **Inject into component** with `@inject NewService service`
+4. **Call async methods** with `await`
+5. **Add tests** in `UnitTests/`
+
+**Example:**
+```csharp
+// Step 1: Create service
+public class NotificationService {
+    public async Task<bool> SendNotificationAsync(int userId, string message) {
+        // Logic
+        return true;
+    }
+}
+
+// Step 2: Register DI
+services.AddScoped<NotificationService>();
+
+// Step 3: Inject in component
+@inject NotificationService notificationService
+
+// Step 4: Call with await
+@code {
+    private async Task NotifyUserAsync() {
+        await notificationService.SendNotificationAsync(userId, "Hello!");
+    }
+}
+```
+
+### Add a New Repository Method
+
+1. **Add method to `JsnoRepo`** (static)
+2. **Use DbContext.EntitySet** for data access
+3. **Make async** with `.ToListAsync()`, `.FirstOrDefaultAsync()`, etc.
+4. **Handle errors** with try-catch
+
+**Example:**
+```csharp
+public static async Task<List<Blog>> GetBlogsByAuthorAsync(string author) {
+    try {
+        using (var context = new jsnoverdotnetdbContext()) {
+            return await context.Blogs
+                .Where(b => b.BlogAuthor == author)
+                .OrderByDescending(b => b.DatePublished)
+                .ToListAsync();
+        }
+    } catch (Exception ex) {
+        throw new InvalidOperationException($"Failed to fetch blogs by author: {ex.Message}", ex);
+    }
+}
+```
+
+## Performance Optimization
+
+### Query Optimization
+
+```csharp
+// ❌ N+1 Problem: Loads all blogs, then separately loads tags for each
+var blogs = await context.Blogs.ToListAsync();
+foreach (var blog in blogs) {
+    var tags = await context.Tags.Where(t => t.BlogId == blog.BlogId).ToListAsync();
+}
+
+// ✅ Good: Eager load related tags in single query
+var blogs = await context.Blogs
+    .Include(b => b.Tags)  // Load related tags
+    .ToListAsync();
+```
+
+### Tracking vs. No-Tracking
+
+```csharp
+// ✅ For read-only queries, disable change tracking
+var blogs = await context.Blogs
+    .AsNoTracking()  // Don't track for updates
+    .ToListAsync();
+
+// For updates, leave tracking on
+var blog = await context.Blogs.FirstOrDefaultAsync(b => b.BlogId == id);
+blog.Title = "Updated";
+context.SaveChanges();  // Detects changes
+```
+
+### Caching
+
+```csharp
+private static readonly MemoryCache _cache = new();
+
+public async Task<BlogDisplayModel> GetBlogCachedAsync(int id) {
+    if (_cache.TryGetValue($"blog_{id}", out BlogDisplayModel cached)) {
+        return cached;
+    }
+    
+    var blog = await GetBlogAsync(id);
+    _cache.Set($"blog_{id}", blog, TimeSpan.FromHours(1));
+    return blog;
+}
+```
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **DbContext disposed error** | Using disposed context | Wrap in `using`, or use DI |
+| **Async deadlock** | Using `.Result` on async methods | Replace with `await` |
+| **Email not sending** | SendGridKey missing or invalid | Check `ContextOptions.SendGridKey` |
+| **Service not injected** | Not registered in DI | Add to `Startup.ConfigureServices()` |
+| **Static JsnoRepo hard to test** | No DI/mocking support | Refactor to scoped service with interface |
+| **Query timeout** | Complex query, large dataset | Add `.AsNoTracking()`, pagination, indices |
+
+## References
+
+- Parent Architecture: [jsnover.net/.copilot-instructions](../../.copilot-instructions)
+- Blog Service Details: [.copilot-instructions](../.copilot-instructions)
+- Games Service Details: [GameLogic/.copilot-instructions](../GameLogic/.copilot-instructions)
+- Data Layer: [Data/.copilot-instructions](../Data/.copilot-instructions)
+- Testing: [UnitTests/.copilot-instructions](../../UnitTests/.copilot-instructions)
+
+---
+
+**Last Updated:** February 2026 | **Pattern:** Service + Static Repository (anti-pattern) | **DI:** ASP.NET Core built-in

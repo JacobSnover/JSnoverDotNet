@@ -1,0 +1,738 @@
+# Testing Strategy - Copilot Instructions
+
+**Focus Area:** Unit testing, integration testing, component testing, mocking, test structure, and filling testing gaps.
+
+**Key Files:**
+- Test Project: `UnitTests/` folder
+- Test Classes: `UnitTests/SolitaireGameStateTests.cs` (currently empty), `UnitTests/UnitTest1.cs` (placeholder)
+- Test Framework: xUnit (implied by `.csproj`), Moq for mocking
+- Classes Under Test: All services, game logic, repositories
+
+## Testing Architecture
+
+```
+Unit Tests (Fast, Isolated)
+├── Service Tests (BlogService, CardService, etc.)
+├── Game Logic Tests (SolitaireGameState, CardComparer)
+├── Utility Tests (RegexUtilities, CardComparer)
+└── Repository Tests (JsnoRepo - via mocks)
+
+Integration Tests (Slower, DB Required)
+├── DbContext Tests
+├── Full workflow tests (Create blog → Tag → Notify)
+└── End-to-end scenarios
+
+Component Tests (Optional bunit)
+├── Razor Component rendering
+├── Event handling
+└── UI interactions
+```
+
+## Testing Pyramid
+
+```
+         ┌─────────────┐
+         │  E2E Tests  │   Few, slow, expensive
+         │  (UI Tests) │
+         ├─────────────┤
+         │  Integration│   Medium, moderate speed
+         │  (DB, APIs) │
+         ├─────────────┤
+   Unit Tests (Fast, many, cheap)
+├───────────────────────────────┤
+```
+
+**Target Ratio:** 70% unit, 20% integration, 10% E2E
+
+## Unit Testing Patterns
+
+### Test Project Structure
+
+```
+UnitTests/
+├── UnitTests.csproj
+├── Services/
+│   ├── BlogServiceTests.cs          # [TODO]
+│   ├── CardServiceTests.cs          # [TODO]
+│   └── EmailServiceTests.cs         # [TODO]
+├── GameLogic/
+│   ├── SolitaireGameStateTests.cs   # [EMPTY - EXPAND HERE]
+│   ├── BlackJackGameStateTests.cs   # [TODO]
+│   └── CardComparerTests.cs         # [TODO]
+├── Utilities/
+│   ├── RegexUtilitiesTests.cs       # [TODO]
+│   └── CardComparerTests.cs         # [TODO]
+├── Repository/
+│   └── JsnoRepoTests.cs             # [TODO - USE MOCKS]
+└── Integration/
+    ├── DatabaseTests.cs              # [TODO]
+    └── WorkflowTests.cs              # [TODO]
+```
+
+### Basic Test Structure (xUnit)
+
+```csharp
+using System;
+using Xunit;
+using Moq;
+
+public class SolitaireGameStateTests {
+    // Arrange (setup)
+    private readonly SolitaireGameState _gameState;
+    
+    public SolitaireGameStateTests() {
+        _gameState = new SolitaireGameState();
+    }
+    
+    // Act & Assert
+    [Fact]
+    public void InitializeGame_Creates52Cards_ReturnsTrue() {
+        // Arrange
+        var expected = 52;
+        
+        // Act
+        _gameState.Initialize();
+        var actual = _gameState.TotalCards();
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void DrawFromStock_WithEmptyStock_ThrowsException() {
+        _gameState.Stock.Clear();
+        
+        Assert.Throws<InvalidOperationException>(() => _gameState.DrawFromStock());
+    }
+    
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(10)]
+    public void DrawMultiple_WithCount_ReturnsCards(int count) {
+        var result = _gameState.DrawFromStock(count);
+        
+        Assert.Equal(count, result.Count);
+    }
+}
+```
+
+### Test Naming Convention
+
+**Pattern:** `MethodName_Scenario_ExpectedResult`
+
+```csharp
+// ✅ Good
+[Fact]
+public void CreateBlogAsync_WithValidModel_ReturnsBlogWithId() { }
+
+[Fact]
+public void CreateBlogAsync_WithoutTitle_ThrowsException() { }
+
+// ❌ Bad
+[Fact]
+public void Test1() { }
+
+[Fact]
+public void BlogService_Works() { }
+```
+
+## Mocking with Moq
+
+### Mocking Database Repository
+
+```csharp
+public class BlogServiceTests {
+    private readonly Mock<IBlogRepository> _mockRepository;
+    private readonly BlogService _service;
+    
+    public BlogServiceTests() {
+        _mockRepository = new Mock<IBlogRepository>();
+        _service = new BlogService(_mockRepository.Object);
+    }
+    
+    [Fact]
+    public async Task CreateBlogAsync_CallsRepository() {
+        // Arrange
+        var model = new NewBlogModel {
+            Title = "Test",
+            Author = "Author",
+            Content = "Content"
+        };
+        
+        var expectedBlog = new Blog {
+            BlogId = 1,
+            BlogTitle = model.Title
+        };
+        
+        _mockRepository
+            .Setup(r => r.AddBlogAsync(It.IsAny<Blog>()))
+            .ReturnsAsync(expectedBlog);
+        
+        // Act
+        var result = await _service.CreateBlogAsync(model);
+        
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(1, result.BlogId);
+        
+        // Verify the mock was called
+        _mockRepository.Verify(
+            r => r.AddBlogAsync(It.IsAny<Blog>()),
+            Times.Once
+        );
+    }
+}
+```
+
+### Mocking HttpClient for CardService
+
+```csharp
+public class CardServiceTests {
+    private readonly Mock<HttpClient> _mockHttpClient;
+    private readonly CardService _service;
+    
+    public CardServiceTests() {
+        _mockHttpClient = new Mock<HttpClient>();
+        _service = new CardService(_mockHttpClient.Object);
+    }
+    
+    [Fact]
+    public async Task InitializeDeckAsync_CallsAPI_ReturnsDeck() {
+        // Arrange
+        var expectedDeck = new NewDeck {
+            Success = true,
+            DeckId = "test-deck-id",
+            Shuffled = true,
+            Remaining = 52
+        };
+        
+        // Mock HTTP response
+        var jsonResponse = JsonSerializer.Serialize(expectedDeck);
+        var httpResponse = new HttpResponseMessage {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(jsonResponse)
+        };
+        
+        _mockHttpClient
+            .Setup(c => c.GetAsync(It.IsAny<string>()))
+            .ReturnsAsync(httpResponse);
+        
+        // Act
+        var result = await _service.InitializeDeckAsync();
+        
+        // Assert
+        Assert.Equal("test-deck-id", result.DeckId);
+    }
+}
+```
+
+### Mocking Session Storage
+
+```csharp
+public class GameServiceSessionTests {
+    private readonly Mock<ISessionStorageService> _mockSession;
+    private readonly CardService _service;
+    
+    public GameServiceSessionTests() {
+        _mockSession = new Mock<ISessionStorageService>();
+        _service = new CardService(_mockSession.Object);
+    }
+    
+    [Fact]
+    public async Task SaveGameAsync_StoresInSession() {
+        // Arrange
+        var game = new SolitaireGameState { /* ... */ };
+        
+        // Act
+        await _service.SaveSolitaireGameAsync(game);
+        
+        // Assert - Verify SetItemAsync was called
+        _mockSession.Verify(
+            s => s.SetItemAsync("solitaire_game", It.IsAny<SolitaireGameState>()),
+            Times.Once
+        );
+    }
+    
+    [Fact]
+    public async Task LoadGameAsync_ReturnsNullIfNotFound() {
+        // Arrange
+        _mockSession
+            .Setup(s => s.GetItemAsync<SolitaireGameState>("solitaire_game"))
+            .ReturnsAsync((SolitaireGameState)null);
+        
+        // Act
+        var result = await _service.LoadSolitaireGameAsync();
+        
+        // Assert
+        Assert.Null(result);
+    }
+}
+```
+
+## Testing Common Scenarios
+
+### Testing Async Methods
+
+```csharp
+[Fact]
+public async Task GetBlogAsync_WithValidId_ReturnsBlog() {
+    // Arrange
+    var blogId = 1;
+    
+    // Act
+    var result = await _service.GetBlogAsync(blogId);
+    
+    // Assert
+    Assert.NotNull(result);
+    Assert.Equal(blogId, result.Id);
+}
+```
+
+### Testing Null Returns
+
+```csharp
+[Fact]
+public async Task GetBlogAsync_WithInvalidId_ReturnsNull() {
+    var result = await _service.GetBlogAsync(999);
+    
+    Assert.Null(result);  // Service returns null for "not found"
+}
+```
+
+### Testing Exceptions
+
+```csharp
+[Fact]
+public async Task CreateBlogAsync_WithoutTitle_ThrowsException() {
+    var model = new NewBlogModel { Title = "" };  // Invalid
+    
+    var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        () => _service.CreateBlogAsync(model)
+    );
+    
+    Assert.Contains("Title required", ex.Message);
+}
+```
+
+### Testing Collections
+
+```csharp
+[Fact]
+public async Task GetBlogsAsync_ReturnsList() {
+    var result = await _service.GetBlogsAsync();
+    
+    Assert.NotEmpty(result);
+    Assert.All(result, b => Assert.NotNull(b.Title));
+}
+```
+
+## Integration Testing (With Database)
+
+### In-Memory EF Core
+
+```csharp
+public class BlogServiceIntegrationTests {
+    private readonly jsnoverdotnetdbContext _context;
+    private readonly BlogService _service;
+    
+    public BlogServiceIntegrationTests() {
+        // Use in-memory database
+        var options = new DbContextOptionsBuilder<jsnoverdotnetdbContext>()
+            .UseInMemoryDatabase(databaseName: "TestDb")
+            .Options;
+        
+        _context = new jsnoverdotnetdbContext(options);
+        _context.Database.EnsureCreated();  // Create schema
+        
+        // Wire up real repository (not mocked)
+        var repository = new BlogRepository(_context);
+        _service = new BlogService(repository);
+    }
+    
+    [Fact]
+    public async Task CreateAndRetrieveBlog_SavesAndLoads() {
+        // Arrange
+        var model = new NewBlogModel {
+            Title = "Integration Test Blog",
+            Author = "Test Author",
+            Content = "Test content"
+        };
+        
+        // Act - Create
+        var created = await _service.CreateBlogAsync(model);
+        
+        // Act - Retrieve
+        var retrieved = await _service.GetBlogAsync(created.BlogId);
+        
+        // Assert
+        Assert.NotNull(retrieved);
+        Assert.Equal("Integration Test Blog", retrieved.Title);
+    }
+    
+    public void Dispose() {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
+    }
+}
+```
+
+## Component Testing (bunit Optional)
+
+### Setting Up bunit
+
+**Add NuGet:** `bunit`
+
+```csharp
+using Xunit;
+using AngleSharp.Dom;
+using Bunit;
+
+public class CardGamesComponentTests : TestContext {
+    [Fact]
+    public void CardGamesPage_RendersGameLinks() {
+        // Arrange
+        var component = RenderComponent<CardGames>();
+        
+        // Act & Assert
+        var links = component.FindAll("a");
+        Assert.Equal(2, links.Count);  // Solitaire + Black Jack
+        
+        var solitaireLink = component.Find("a[href='/Solitaire']");
+        Assert.NotNull(solitaireLink);
+    }
+    
+    [Fact]
+    public void BlogListComponent_DisplaysBlogs() {
+        // Arrange
+        var blogs = new List<BlogListModel> {
+            new BlogListModel { Id = 1, Title = "Blog 1" },
+            new BlogListModel { Id = 2, Title = "Blog 2" }
+        };
+        
+        var component = RenderComponent<Blogs>(parameters =>
+            parameters.Add(c => c.Blogs, blogs)
+        );
+        
+        // Act & Assert
+        var blogItems = component.FindAll(".blog-item");
+        Assert.Equal(2, blogItems.Count);
+        
+        Assert.Contains("Blog 1", component.Markup);
+    }
+}
+```
+
+## Current Testing Gaps
+
+| Area | Status | Priority | Solution |
+|------|--------|----------|----------|
+| **SolitaireGameState** | EMPTY | HIGH | Implement 20+ tests for game logic |
+| **BlogService** | MISSING | HIGH | Create BlogServiceTests.cs with mocked repo |
+| **CardService** | MISSING | HIGH | Create with mocked HttpClient & session |
+| **EmailService** | MISSING | MEDIUM | Mock SendGrid, test composition |
+| **JsnoRepo** | MISSING | MEDIUM | Create with mocked DbContext |
+| **RegexUtilities** | MISSING | LOW | Validate email/phone patterns |
+| **CardComparer** | MISSING | MEDIUM | Test move validation rules |
+| **Integration Tests** | MISSING | MEDIUM | In-memory DB for full workflows |
+| **Component Tests** | MISSING | LOW | Optional; use bunit if needed |
+| **Auth Tests** | MISSING | MEDIUM | Test login, roles, authorization |
+
+## Creating New Tests: Step-by-Step
+
+### 1. Add Test Class
+
+```bash
+# In UnitTests/ folder
+cd UnitTests
+```
+
+### 2. Create File
+
+`SolitaireGameStateTests.cs`:
+```csharp
+using System;
+using System.Collections.Generic;
+using Xunit;
+using JsnoverDotNet.GameLogic;
+
+namespace JsnoverDotNet.UnitTests.GameLogic {
+    public class SolitaireGameStateTests {
+        private readonly SolitaireGameState _gameState;
+        
+        public SolitaireGameStateTests() {
+            _gameState = new SolitaireGameState();
+        }
+        
+        [Fact]
+        public void Initialize_Creates52Cards() {
+            // TODO
+        }
+    }
+}
+```
+
+### 3. Write Tests
+
+```csharp
+[Fact]
+public void Initialize_Creates52Cards() {
+    _gameState.Initialize();
+    
+    var total = _gameState.TotalCardsCount();
+    
+    Assert.Equal(52, total);
+}
+```
+
+### 4. Run Tests
+
+**Visual Studio:**
+```
+Test → Run All Tests
+```
+
+**CLI:**
+```bash
+dotnet test
+```
+
+## Test Execution
+
+### Running All Tests
+
+```bash
+dotnet test
+```
+
+### Running Specific Test Class
+
+```bash
+dotnet test --filter Class=SolitaireGameStateTests
+```
+
+### Running Specific Test
+
+```bash
+dotnet test --filter FullyQualifiedName~Initialize_Creates52Cards
+```
+
+### With Coverage Report
+
+```bash
+dotnet test /p:CollectCoverage=true /p:CoverageFormat=opencover
+```
+
+## Code Coverage
+
+### Target Coverage Goals
+
+- **Unit Tests:** 80% coverage (critical paths)
+- **Integration Tests:** 90% coverage (workflows)
+- **Overall:** 75% branch coverage
+
+### Coverage Analysis
+
+```bash
+# Install ReportGenerator
+dotnet tool install -g ReportGenerator
+
+# Run tests with coverage
+dotnet test /p:CollectCoverage=true
+
+# Generate HTML report
+reportgenerator -reports:"**/coverage.opencover.xml" -targetdir:coveragereport
+```
+
+## Test Data Builders
+
+### Creating Test Data Cleanly
+
+```csharp
+public class BlogBuilder {
+    private string _title = "Test Blog";
+    private string _author = "Test Author";
+    private string _content = "Test content";
+    
+    public BlogBuilder WithTitle(string title) {
+        _title = title;
+        return this;
+    }
+    
+    public BlogBuilder WithAuthor(string author) {
+        _author = author;
+        return this;
+    }
+    
+    public Blog Build() {
+        return new Blog {
+            BlogTitle = _title,
+            BlogAuthor = _author,
+            BlogContent = _content
+        };
+    }
+}
+
+// Usage
+[Fact]
+public void Test_WithBuilder() {
+    var blog = new BlogBuilder()
+        .WithTitle("Custom Title")
+        .WithAuthor("Custom Author")
+        .Build();
+    
+    Assert.Equal("Custom Title", blog.BlogTitle);
+}
+```
+
+## Best Practices
+
+### ✅ Good Test Practices
+
+1. **One Assertion Per Test (When Possible)**
+   ```csharp
+   // ✅ Good
+   [Fact]
+   public void CreateBlog_ReturnsBlogId() {
+       var result = _service.CreateBlog(model);
+       Assert.NotNull(result.BlogId);  // One assertion
+   }
+   
+   // ❌ Bad
+   [Fact]
+   public void CreateBlog_Works() {
+       var result = _service.CreateBlog(model);
+       Assert.NotNull(result);
+       Assert.NotNull(result.BlogId);
+       Assert.NotNull(result.Title);  // Too many assertions
+   }
+   ```
+
+2. **Use Arrange-Act-Assert (AAA)**
+   ```csharp
+   [Fact]
+   public void Test_FollowAAA() {
+       // Arrange
+       var input = new TestData();
+       
+       // Act
+       var result = SomethingUnderTest(input);
+       
+       // Assert
+       Assert.NotNull(result);
+   }
+   ```
+
+3. **Mock External Dependencies**
+   ```csharp
+   // ✅ Good - Database mocked
+   _mockRepos.Setup(r => r.GetBlogAsync(1)).ReturnsAsync(blog);
+   
+   // ❌ Bad - Touches real database
+   var blog = _dbContext.Blogs.FirstOrDefault(b => b.BlogId == 1);
+   ```
+
+4. **Use Meaningful Test Names**
+   ```csharp
+   // ✅ Good
+   public void GetBlogAsync_WithInvalidId_ReturnsNull()
+   
+   // ❌ Bad
+   public void TestGetBlog()
+   ```
+
+5. **Don't Test Implementation Details**
+   ```csharp
+   // ✅ Good - Tests behavior
+   Assert.Equal("result", service.GetValue());
+   
+   // ❌ Bad - Tests internal method
+   Assert.Equal(5, service._cache.Count);  // Don't test private members
+   ```
+
+### ❌ Anti-Patterns
+
+- **Shared Test State:** Tests affect each other (use fresh setup in constructor)
+- **Async/Await Missing:** Forget `async`/`await` → test passes but doesn't test async
+- **Testing Random Values:** Tests fail intermittently (use mocks instead)
+- **Over-Mocking:** Mock everything → tests pass but don't catch real bugs
+- **Brittle Assertions:** Test exact error message → breaks on minor message change
+
+## Continuous Integration (CI)
+
+### Azure Pipelines Configuration
+
+**In `azure-pipelines.yml`:**
+```yaml
+trigger:
+  - main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    version: '9.x'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'test'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'VSTest'
+    testResultsFiles: '**/*.trx'
+```
+
+## Troubleshooting Tests
+
+| Problem | Solution |
+|---------|----------|
+| **Test hangs on async** | Check for `.Result` or missing `await` |
+| **Mock not working** | Use `It.IsAny<>()` for parameter matching |
+| **DbContext disposed** | Use in-memory DB for integration tests |
+| **Tests interfere with each other** | Don't share state; create fresh mocks in setup |
+| **Test data not cleaning up** | Implement `IDisposable` or use `IAsyncLifetime` |
+| **Flaky tests fail intermittently** | Remove dependency on file system, time, random; use mocks |
+
+## Next Steps: Priority Test Implementation
+
+### Phase 1 (Week 1) - Critical Gaps
+
+- [ ] `SolitaireGameStateTests.cs` - Expand empty class with 20+ tests
+- [ ] `BlogServiceTests.cs` - Test CRUD operations
+- [ ] `CardComparerTests.cs` - Validate move rules
+
+### Phase 2 (Week 2) - Important Gaps
+
+- [ ] `CardServiceTests.cs` - Mock HTTP, session storage
+- [ ] Integration tests with in-memory DB
+- [ ] EmailService mock tests
+
+### Phase 3 (Week 3) - Nice-to-Have
+
+- [ ] Component tests with bunit
+- [ ] Full workflow integration tests
+- [ ] E2E Selenium tests (optional)
+
+### Phase 4 (Ongoing)
+
+- [ ] Maintain 75% coverage
+- [ ] Test all new features before commit
+- [ ] Refactor untestable code (static JsnoRepo, etc.)
+
+## References
+
+- xUnit Documentation: https://xunit.net/docs/getting-started
+- Moq Documentation: https://github.com/moq/moq4/wiki/Quickstart
+- bunit: https://bunit.io/
+- Parent Architecture: [jsnover.net/.copilot-instructions](../../.copilot-instructions)
+
+---
+
+**Last Updated:** February 2026 | **Test Framework:** xUnit | **Mocking:** Moq | **Current Coverage:** ~0% (gaps to fill)

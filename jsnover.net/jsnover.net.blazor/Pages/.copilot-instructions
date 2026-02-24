@@ -1,0 +1,773 @@
+# Pages & Routing - Copilot Instructions
+
+**Focus Area:** Razor page structure, routing, parameter passing, layouts, navigation, error handling.
+
+**Key Files:**
+- Page Hosts: `Pages/_Host.cshtml` (server-rendered HTML shell)
+- Layout: `Shared/MainLayout.razor` (master layout template)
+- Router: `App.razor` (routing configuration)
+- Pages: `Pages/*.razor`, `Pages/BlogPost/*.razor`, `Pages/Games/*.razor`, `Pages/Common/*.razor`
+- Error: `Pages/Error.cshtml`
+
+## Blazor Server Routing Overview
+
+```
+User navigates to /blog
+        ↓
+Router (App.razor) matches @page "/blog"
+        ↓
+Blazor page component loaded
+        ↓
+Service injected via @inject
+        ↓
+OnInitializedAsync() executes
+        ↓
+Component renders
+        ↓
+HTML sent to browser (Blazor WebSocket connection)
+```
+
+## Page Structure
+
+### Basic Page Template
+
+**Pages/ExamplePage.razor:**
+```razor
+@page "/example"
+@page "/example/{id:int}"
+@layout MainLayout
+@attribute [Authorize]
+
+@inject ExampleService service
+@inject NavigationManager navManager
+
+<PageTitle>Example Page</PageTitle>
+
+<h1>@Title</h1>
+
+@if (Data != null) {
+    <p>@Data</p>
+}
+else {
+    <p>Loading...</p>
+}
+
+<button @onclick="GoBackAsync">Back</button>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    private string Title { get; set; }
+    private string Data { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        Title = $"Example {Id}";
+        Data = await service.GetDataAsync(Id);
+    }
+    
+    private async Task GoBackAsync() {
+        navManager.NavigateTo("/");
+    }
+}
+```
+
+## @page Directive (Routes)
+
+### Single Route
+
+```razor
+@page "/blog"
+
+<!-- Accessible at: yoursite.com/blog -->
+```
+
+### Multiple Routes (Same Page)
+
+```razor
+@page "/blog"
+@page "/articles"
+
+<!-- Accessible at: yoursite.com/blog OR yoursite.com/articles -->
+```
+
+### Route Parameters
+
+```razor
+@page "/blog/{id:int}"
+@page "/blog/{slug:string}"
+@page "/blog/{year:int}/{month:int}"
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    [Parameter]
+    public string Slug { get; set; }
+    
+    [Parameter]
+    public int Year { get; set; }
+    
+    [Parameter]
+    public int Month { get; set; }
+}
+```
+
+### Route Constraints
+
+| Constraint | Example | Matches |
+|-----------|---------|---------|
+| **int** | `{id:int}` | 123, -5 (not abc) |
+| **string** | `{name:string}` | abc, hello-world |
+| **bool** | `{active:bool}` | true, false |
+| **datetime** | `{date:datetime}` | 2024-02-23 |
+| **decimal** | `{price:decimal}` | 12.99, -5.5 |
+| **guid** | `{id:guid}` | UUID format |
+| **regex** | `{id:regex(^\\d{3}$)}` | 123 (3-digit) |
+
+### Optional Route Parameters
+
+```razor
+@page "/search"
+@page "/search/{query}"
+
+<!-- 
+Both /search and /search/blazor are valid
+If not provided in URL, Query parameter is null/default
+-->
+
+@code {
+    [Parameter]
+    public string Query { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        if (string.IsNullOrEmpty(Query)) {
+            // No search term provided
+        }
+    }
+}
+```
+
+## Layouts (@layout)
+
+### Main Layout
+
+**Shared/MainLayout.razor:**
+```razor
+@inherits LayoutComponentBase
+
+<header>
+    <NavMenu />
+</header>
+
+<main>
+    <div class="container">
+        <article class="content px-4">
+            @Body  <!-- Page content renders here -->
+        </article>
+    </div>
+</main>
+
+<footer>
+    <Footer />
+</footer>
+
+@code {
+    [Parameter]
+    public RenderFragment Body { get; set; }
+}
+```
+
+**Key Concepts:**
+- `@inherits LayoutComponentBase` - Makes this a layout
+- `@Body` - Placeholder for page content
+- `[Parameter] RenderFragment Body` - Receives page from router
+
+### Using Different Layouts
+
+```razor
+@page "/admin"
+@layout AdminLayout  <!-- Use AdminLayout instead of MainLayout -->
+
+<h1>Admin Panel</h1>
+```
+
+### Nested Layouts
+
+**AdminLayout.razor:**
+```razor
+@inherits LayoutComponentBase
+@layout MainLayout  <!-- Inherit from MainLayout -->
+
+<div class="admin-sidebar">
+    <AdminMenu />
+</div>
+
+<div class="admin-content">
+    @Body
+</div>
+```
+
+**Result:** AdminLayout wraps around page, MainLayout wraps around AdminLayout
+
+## Navigation
+
+### Programmatic Navigation
+
+```csharp
+@inject NavigationManager navManager
+
+@code {
+    private void GoToHome() {
+        navManager.NavigateTo("/");
+    }
+    
+    private void GoToBlogs() {
+        navManager.NavigateTo("/Blogs");
+    }
+    
+    private void GoToBlog(int blogId) {
+        navManager.NavigateTo($"/Blog/{blogId}");
+    }
+    
+    private void GoToExternalSite() {
+        navManager.NavigateTo("https://jsnover.net", forceLoad: true);  // Load in new context
+    }
+    
+    private void Refresh() {
+        navManager.NavigateTo(navManager.Uri, forceLoad: true);  // Force browser refresh
+    }
+}
+```
+
+### Href Navigation
+
+```html
+<!-- Simple link -->
+<a href="/Blogs">All Blogs</a>
+
+<!-- With route parameters -->
+<a href="/Blog/@blog.Id">Read Blog @blog.Title</a>
+
+<!-- Logout form -->
+<form method="post" action="Identity/Account/Logout">
+    <button type="submit">Logout</button>
+</form>
+```
+
+### NavLink Component (Auto-Active)
+
+```razor
+<NavLink href="/" Match="NavLinkMatch.All">
+    Home
+</NavLink>
+
+<NavLink href="/Blogs" Match="NavLinkMatch.Prefix">
+    Blogs
+</NavLink>
+
+@code {
+    // NavLink automatically adds "active" class when current route matches
+    // Match.All: Exact match required (for /)
+    // Match.Prefix: Prefix match (for /Blogs, /Blogs/123, etc.)
+}
+```
+
+**Generated HTML:**
+```html
+<!-- If on home page -->
+<a href="/" class="nav-link active">Home</a>
+
+<!-- If not on home page -->
+<a href="/" class="nav-link">Home</a>
+```
+
+## Route Examples from Solution
+
+### Home Page
+
+**Pages/Index.razor:**
+```razor
+@page "/"
+
+<PageTitle>Home - JSnover.Net</PageTitle>
+
+<h1>Welcome to JSnover.Net</h1>
+<p>Blog, games, and portfolio site</p>
+
+<div class="featured-blogs">
+    @if (FeaturedBlogs != null) {
+        @foreach (var blog in FeaturedBlogs) {
+            <div class="blog-preview">
+                <h2>@blog.Title</h2>
+                <p>@blog.Summary</p>
+                <a href="/Blog/@blog.Id">Read more</a>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<BlogListModel> FeaturedBlogs { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        FeaturedBlogs = await blogService.GetFeaturedBlogsAsync();
+    }
+}
+```
+
+### Blog Listing
+
+**Pages/BlogPost/Blogs.razor:**
+```razor
+@page "/Blogs"
+@page "/Blogs/{searchType}/{searchParameter}"
+
+@inject BlogService blogService
+@inject NavigationManager navManager
+
+<PageTitle>Blogs - JSnover.Net</PageTitle>
+
+<h1>Blog Posts</h1>
+
+<div class="search-bar">
+    <input @bind="SearchTerm" placeholder="Search..." />
+    <select @bind="SearchType">
+        <option value="title">by Title</option>
+        <option value="tag">by Tag</option>
+        <option value="author">by Author</option>
+    </select>
+    <button @onclick="SearchAsync">Search</button>
+</div>
+
+@if (Blogs != null && Blogs.Count > 0) {
+    <div class="blogs">
+        @foreach (var blog in Blogs) {
+            <BlogCard Blog="@blog" OnReadMore="@(() => GoToBlog(blog.Id))" />
+        }
+    </div>
+}
+else if (SearchAttempted) {
+    <p>No blogs found. Try a different search.</p>
+}
+else {
+    <p>Loading blogs...</p>
+}
+
+@code {
+    [Parameter]
+    public string SearchType { get; set; } = "title";
+    
+    [Parameter]
+    public string SearchParameter { get; set; }
+    
+    private string SearchTerm { get; set; }
+    private List<BlogListModel> Blogs { get; set; }
+    private bool SearchAttempted { get; set; } = false;
+    
+    protected override async Task OnParametersSetAsync() {
+        if (!string.IsNullOrEmpty(SearchParameter)) {
+            SearchTerm = SearchParameter;
+            await SearchAsync();
+        }
+    }
+    
+    private async Task SearchAsync() {
+        if (string.IsNullOrEmpty(SearchTerm)) return;
+        
+        Blogs = SearchType switch {
+            "title" => await blogService.SearchBlogsByTitleAsync(SearchTerm),
+            "tag" => await blogService.SearchBlogsByTagAsync(SearchTerm),
+            "author" => await blogService.SearchBlogsByAuthorAsync(SearchTerm),
+            _ => new List<BlogListModel>()
+        };
+        
+        SearchAttempted = true;
+        
+        // Update URL to reflect search
+        navManager.NavigateTo($"/Blogs/{SearchType}/{SearchTerm}");
+    }
+    
+    private void GoToBlog(int id) {
+        navManager.NavigateTo($"/Blog/{id}");
+    }
+}
+```
+
+### Blog Detail Page
+
+**Pages/BlogPost/BlogView.razor:**
+```razor
+@page "/Blog/{id:int}"
+
+@inject BlogService blogService
+@inject NavigationManager navManager
+
+<PageTitle>@Blog?.Title - JSnover.Net</PageTitle>
+
+@if (Blog != null) {
+    <article class="blog-post">
+        <h1>@Blog.Title</h1>
+        <div class="metadata">
+            <span class="author">By @Blog.Author</span>
+            <span class="date">@Blog.PublishDate.ToLongDateString()</span>
+        </div>
+        
+        <div class="tags">
+            @foreach (var tag in Blog.Tags) {
+                <a href="/Blogs/tag/@tag">
+                    <span class="tag">@tag</span>
+                </a>
+            }
+        </div>
+        
+        <div class="content">
+            @Html.Raw(Blog.Content)  <!-- Renders HTML content -->
+        </div>
+        
+        <h2>Comments</h2>
+        @if (Comments != null && Comments.Count > 0) {
+            <div class="comments">
+                @foreach (var comment in Comments) {
+                    <div class="comment">
+                        <p><strong>@comment.CommentorName</strong> said:</p>
+                        <p>@comment.CommentText</p>
+                        <time>@comment.DateCommented</time>
+                    </div>
+                }
+            </div>
+        }
+        
+        <h3>Leave a Comment</h3>
+        <form @onsubmit="SubmitCommentAsync">
+            <input @bind="CommentorName" placeholder="Your name" required />
+            <input @bind="CommentorEmail" type="email" placeholder="Your email" required />
+            <textarea @bind="CommentText" placeholder="Your comment..." required></textarea>
+            <button type="submit">Post Comment</button>
+        </form>
+    </article>
+}
+else if (Loading) {
+    <p>Loading...</p>
+}
+else {
+    <p>Blog not found</p>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    private BlogDisplayModel Blog { get; set; }
+    private List<BlogCommentModel> Comments { get; set; }
+    private bool Loading { get; set; } = true;
+    
+    private string CommentorName { get; set; }
+    private string CommentorEmail { get; set; }
+    private string CommentText { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        Blog = await blogService.GetBlogByIdAsync(Id);
+        Comments = await blogService.GetCommentsForBlogAsync(Id);
+        Loading = false;
+    }
+    
+    private async Task SubmitCommentAsync() {
+        var comment = new BlogCommentModel {
+            BlogId = Id,
+            CommentorName = CommentorName,
+            CommentorEmail = CommentorEmail,
+            CommentText = CommentText
+        };
+        
+        await blogService.AddCommentAsync(comment);
+        
+        // Refresh comments
+        Comments = await blogService.GetCommentsForBlogAsync(Id);
+        
+        // Clear form
+        CommentorName = "";
+        CommentorEmail = "";
+        CommentText = "";
+    }
+}
+```
+
+### Game Pages
+
+**Pages/Games/CardGames.razor:**
+```razor
+@page "/CardGames"
+
+<PageTitle>Card Games - JSnover.Net</PageTitle>
+
+<h1>Choose a Game</h1>
+
+<div class="games-grid">
+    <div class="game-card">
+        <h2>Solitaire</h2>
+        <p>Classic patience card game</p>
+        <a href="/Solitaire" class="btn">Play</a>
+    </div>
+    
+    <div class="game-card">
+        <h2>Black Jack</h2>
+        <p>Dealer vs. Player card game</p>
+        <a href="/BlackJack" class="btn">Play</a>
+    </div>
+</div>
+```
+
+**Pages/Games/Solitaire.razor:**
+```razor
+@page "/Solitaire"
+
+@inject CardService cardService
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+<PageTitle>Solitaire - JSnover.Net</PageTitle>
+
+<SolitaireBoard />
+```
+
+## Error Handling
+
+### Error Page
+
+**Pages/Error.cshtml:**
+```html
+@page "/error"
+@model ErrorModel
+
+<h1 class="text-danger">Error. @Model.RequestId</h1>
+```
+
+### Creating Custom Error Pages
+
+**Pages/NotFound.razor:**
+```razor
+@page "/notfound"
+
+<div class="error-page">
+    <h1>Page Not Found (404)</h1>
+    <p>The page you're looking for doesn't exist.</p>
+    <a href="/" class="btn">Go Home</a>
+</div>
+```
+
+**In App.razor - NotFound:**
+```razor
+<NotFound>
+    <PageTitle>Not found</PageTitle>
+    <LayoutView Layout="@typeof(MainLayout)">
+        <div class="page">
+            <h1 class="display-4">Page not found</h1>
+            <p>Sorry, there's nothing at this address.</p>
+        </div>
+    </LayoutView>
+</NotFound>
+```
+
+## QueryString Parameters
+
+### Accessing Query Strings
+
+```razor
+@page "/search"
+
+@code {
+    [SupplyParameterFromQuery]
+    public string Q { get; set; }  // Reads from ?q=value
+    
+    [SupplyParameterFromQuery]
+    public int Page { get; set; } = 1  // Reads from ?page=2
+    
+    protected override async Task OnInitializedAsync() {
+        if (!string.IsNullOrEmpty(Q)) {
+            await SearchAsync(Q);
+        }
+    }
+}
+```
+
+**URL:** `yoursite.com/search?q=blazor&page=2`
+
+### Building Query Strings
+
+```csharp
+private void SearchAndNavigate(string term, int page = 1) {
+    navManager.NavigateTo($"/search?q={term}&page={page}");
+}
+```
+
+## Shared State Across Pages
+
+### Using Cascading Parameters
+
+```razor
+<!-- App.razor -->
+<CascadingValue Value="CurrentUser">
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <!-- ... -->
+    </Router>
+</CascadingValue>
+
+@code {
+    private ClaimsPrincipal CurrentUser { get; set; }
+}
+
+<!-- Any page can access CurrentUser -->
+@code {
+    [CascadingParameter]
+    public ClaimsPrincipal CurrentUser { get; set; }
+}
+```
+
+### Using Singleton Services
+
+```csharp
+// In Startup.cs
+services.AddSingleton<AppState>();
+
+// AppState class
+public class AppState {
+    public string CurrentSearchTerm { get; set; }
+    public EventCallback SearchTermChanged { get; set; }
+    
+    public async Task SetSearchTermAsync(string term) {
+        CurrentSearchTerm = term;
+        await SearchTermChanged.InvokeAsync();
+    }
+}
+
+// In any page
+@inject AppState appState
+
+@code {
+    protected override async Task OnInitializedAsync() {
+        appState.SearchTermChanged += StateHasChanged;
+    }
+}
+```
+
+## Page Titles & SEO
+
+### Setting Page Title
+
+```razor
+@page "/blog/{id:int}"
+
+<PageTitle>@Blog?.Title - JSnover.Net</PageTitle>
+
+@code {
+    private BlogDisplayModel Blog { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        Blog = await blogService.GetBlogByIdAsync(Id);
+    }
+}
+```
+
+### Meta Tags (In _Host.cshtml)
+
+```html
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSnover.Net</title>
+    <meta name="description" content="Blog, games, and portfolio site" />
+    <meta property="og:image" content="/images/og-image.jpg" />
+</head>
+```
+
+## Best Practices
+
+### ✅ Good Practices
+
+1. **Use @page before @layout:**
+   ```razor
+   @page "/example"
+   @layout MainLayout
+   
+   <!-- NOT @layout before @page -->
+   ```
+
+2. **Always await OnInitializedAsync:**
+   ```csharp
+   // ✅ Good
+   protected override async Task OnInitializedAsync() {
+       Data = await service.GetDataAsync();
+   }
+   
+   // ❌ Bad
+   protected override void OnInitialized() {
+       Data = service.GetData().Result;  // Deadlock!
+   }
+   ```
+
+3. **Validate route parameters:**
+   ```csharp
+   protected override async Task OnParametersSetAsync() {
+       if (Id <= 0) {
+           navManager.NavigateTo("/");
+           return;
+       }
+       
+       Item = await service.GetItemAsync(Id);
+   }
+   ```
+
+4. **Use NavLink for navigation styling:**
+   ```razor
+   <!-- ✅ Good - Auto-active styling -->
+   <NavLink href="/Blogs" Match="NavLinkMatch.Prefix">Blogs</NavLink>
+   
+   <!-- ❌ Bad - Manual styling required -->
+   <a href="/Blogs">Blogs</a>
+   ```
+
+5. **Handle null data gracefully:**
+   ```razor
+   <!-- ✅ Good -->
+   @if (Item != null) {
+       <p>@Item.Title</p>
+   }
+   else {
+       <p>Loading...</p>
+   }
+   
+   <!-- ❌ Bad -->
+   <p>@Item.Title</p>  <!-- NullReferenceException if Item is null -->
+   ```
+
+### ❌ Anti-Patterns
+
+- **Multiple @page directives with same route:** Only one route per page
+- **Hardcoded navigation URLs:** Use `navManager.NavigateTo()` or `href` attributes
+- **Route parameters in lowercase:** Use PascalCase for consistency
+- **Missing PageTitle:** Every page should have meaningful title for SEO
+- **Not handling 404 errors:** Always provide NotFound UI
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **Route not matching** | Typo in `@page` or parameter names | Check exact spelling; rebuild |
+| **Parameters not binding** | Parameter name doesn't match route | Ensure `[Parameter] public int Id` matches `{id:int}` |
+| **Page content displays in wrong layout** | Missing or wrong `@layout` directive | Set correct layout; defaults to MainLayout |
+| **Navigation doesn't work** | Using `<a href>` instead of `navManager.NavigateTo()` | For SPA navigation, use NavigationManager |
+| **Query string parameters null** | Not using `[SupplyParameterFromQuery]` | Add attribute to property |
+| **Cascading parameters not available** | Not wrapped in `<CascadingValue>` | Ensure App.razor wraps with CascadingAuthenticationState |
+| **Page not refreshing on navigation** | Same page, different parameters | Use `OnParametersSetAsync()` not `OnInitializedAsync()` |
+
+## References
+
+- Parent Architecture: [jsnover.net/.copilot-instructions](../../.copilot-instructions)
+- Components: [Components/.copilot-instructions](../../Components/.copilot-instructions)
+- Auth & Identity: [Areas/.copilot-instructions](../../Areas/.copilot-instructions)
+- Blog Pages: [.copilot-instructions](../.copilot-instructions)
+- Games Pages: [GameLogic/.copilot-instructions](../../GameLogic/.copilot-instructions)
+
+---
+
+**Last Updated:** February 2026 | **Routing:** Blazor Server-side | **Framework:** .NET 9.0

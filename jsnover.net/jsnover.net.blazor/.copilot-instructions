@@ -1,0 +1,721 @@
+# Blog & Content Management - Copilot Instructions
+
+**Focus Area:** Manage blog content, articles, tags, comments, subscribers, and related functionality.
+
+**Key Files:**
+- Pages: `Pages/BlogPost/Blogs.razor`, `BlogView.razor`, `EditBlog.razor`, `WriteBlog.razor`
+- Service: `Infrastructure/Services/BlogService.cs`
+- DTOs: `DataTransferObjects/BlogModels/*`
+- Models: `Models/Blog.cs`, `Models/Tag.cs`, `Models/Photos.cs`, `Models/Commentors.cs`, `Models/Subscribers.cs`
+- Constants: `Constants/BlogIndexes.cs`, `Constants/Keywords.cs`
+- Repository: `Infrastructure/SqlRepo/JsnoRepo.cs` (blog-related methods)
+- Database: `Data/jsnoverdotnetdbContext.cs`, `Data/ApplicationDbContext.cs` (hosted by identity)
+
+## Blog Architecture Overview
+
+The blog section follows a **4-layer pattern**:
+
+```
+Razor Pages (BlogPost/*.razor)
+    ↓ @inject BlogService
+Service Layer (BlogService)
+    ↓ calls
+Repository (JsnoRepo static methods)
+    ↓ creates DbContext
+Data (jsnoverdotnetdbContext)
+    ↓ queries
+SQL Server (Blog, Tag, Photos, Commentors, Subscribers tables)
+```
+
+### Domain Model Relationships
+
+```
+Blog (1)
+├── Tag (many)  [blog_id foreign key in Tag table]
+├── Photos (many)  [referenced by TagName in array]
+├── Commentors (many)  [blog_id in Commentors table]
+└── Subscribers (tracking table)  [email notifications]
+```
+
+**Data Flow:**
+1. Raw `Blog` entity retrieved from database (via JsnoRepo)
+2. Wrapped in DTO (`BlogDisplayModel`, `BlogEditModel`, etc.)
+3. Passed to Razor component for rendering
+4. Component binds DTO properties to UI inputs
+5. On save, DTO converted back to `Blog` entity via BlogService
+
+## DTO Pattern (Critical!)
+
+DTOs (Data Transfer Objects) separate **domain models** from **presentation concerns**. Blog DTOs are in `DataTransferObjects/BlogModels/`:
+
+### Core DTOs
+
+| DTO Class | Purpose | When to Use | Example Properties |
+|-----------|---------|------------|-------------------|
+| `BlogDisplayModel` | Read-only blog viewing | Display blog post on detail page | `Id`, `Title`, `Author`, `Content`, `PublishDate`, `TagsDisplay`, `PhotosDisplay` |
+| `BlogEditModel` | Modify existing blog | Edit page form binding | `Id`, `Title`, `Author`, `Content`, `BlogType`, `TagsInput` (comma-separated) |
+| `NewBlogModel` | Create new blog | Blog creation form | `Title`, `Author`, `Content`, `BlogType` |
+| `BlogListModel` | Summary for listing | Blog index/search results | `Id`, `Title`, `Author`, `Summary`, `PublishDate`, `Tags` |
+| `BlogViewModel` | Display wrapper | Presenter pattern alternative | `Blog`, `Comments`, `RelatedBlogs`, `SubscriberCount` |
+| `BlogCommentModel` | Comment data transfer | Comment submission form | `BlogId`, `CommentorName`, `CommentorEmail`, `CommentText` |
+| `SubscribeModel` | Newsletter signup | Newsletter form | `Email`, `SubscribeDate` |
+
+### DTO Conversion Patterns
+
+**Domain → DTO (Service layer):**
+```csharp
+// From BlogService.cs
+public BlogDisplayModel ConvertToBlogDisplayModel(Blog blog) {
+    return new BlogDisplayModel {
+        Id = blog.BlogId,
+        Title = blog.BlogTitle,
+        Author = blog.BlogAuthor,
+        Content = blog.BlogContent,
+        PublishDate = blog.DatePublished,
+        TagsDisplay = string.Join(", ", blog.Tags?.Select(t => t.TagName) ?? new List<string>()),
+        PhotosDisplay = ConvertPhotosToDisplay(blog)
+    };
+}
+```
+
+**DTO → Domain (Service layer):**
+```csharp
+// When saving
+public async Task<Blog> CreateBlogAsync(NewBlogModel model) {
+    var blog = new Blog {
+        BlogTitle = model.Title,
+        BlogAuthor = model.Author,
+        BlogContent = model.Content,
+        BlogType = model.BlogType,
+        DatePublished = DateTime.UtcNow
+        // Note: Collections (Tags, Photos) handled separately below
+    };
+    await JsnoRepo.AddBlogAsync(blog);
+    return blog;
+}
+```
+
+### Anti-Pattern ❌ vs. Pattern ✅
+
+**BAD (Don't do this):**
+```razor
+@inject BlogService blogService
+@code {
+    List<Blog> blogs; // Raw domain model in component
+    
+    protected override async Task OnInitializedAsync() {
+        // Tight coupling to domain model
+        blogs = await blogService.GetCachedBlogs();
+    }
+}
+```
+
+**GOOD (Do this):**
+```razor
+@inject BlogService blogService
+@code {
+    List<BlogListModel> blogs; // DTO in component
+    
+    protected override async Task OnInitializedAsync() {
+        // Service returns DTOs; decoupled from domain
+        blogs = await blogService.GetBlogListModelsAsync();
+    }
+}
+```
+
+## BlogService Deep Dive
+
+**Location:** `Infrastructure/Services/BlogService.cs`
+
+### Core Methods
+
+```csharp
+// RETRIEVAL - All return DTOs, not raw entities
+Task<List<BlogListModel>> GetBlogsAsync();
+Task<BlogDisplayModel> GetBlogByIdAsync(int id);
+Task<List<BlogListModel>> SearchBlogsByTitleAsync(string title);
+Task<List<BlogListModel>> SearchBlogsByTagAsync(string tagName);
+Task<int> GetBlogCountAsync();
+
+// CREATION
+Task<Blog> CreateBlogAsync(NewBlogModel model);
+Task AddBlogTagAsync(int blogId, string tagName);
+Task AddBlogPhotoAsync(int blogId, string photoUrl);
+
+// UPDATES
+Task<Blog> UpdateBlogAsync(BlogEditModel model);
+Task UpdateBlogContentAsync(int blogId, string newContent);
+
+// DELETION
+Task DeleteBlogAsync(int blogId);
+Task RemoveBlogTagAsync(int blogId, string tagName);
+
+// COMMENTS
+Task<bool> AddCommentAsync(BlogCommentModel comment);
+Task<List<BlogCommentModel>> GetCommentsForBlogAsync(int blogId);
+
+// SUBSCRIBERS
+Task<bool> SubscribeEmail(string email);
+Task NotifySubscribersAsync(int blogId, string blogTitle);
+```
+
+### Key Implementation Details
+
+1. **Caching via Singleton:** `BlogListModel` is registered as Singleton in DI; persists across requests
+   - Reloads on app restart (no background refresh)
+   - Not suitable for high-frequency content updates
+   - Trade-off: Performance for freshness
+
+2. **Async/Await Standards:**
+   ```csharp
+   public async Task<BlogDisplayModel> GetBlogByIdAsync(int id) {
+       try {
+           var blog = await JsnoRepo.GetBlogByIdAsync(id);
+           return blog != null ? ConvertToBlogDisplayModel(blog) : null;
+       } catch (InvalidOperationException ex) {
+           // Log and rethrow for component handling
+           throw new InvalidOperationException($"Failed to load blog {id}", ex);
+       }
+   }
+   ```
+
+3. **Error Handling:**
+   - Null check: `if (blog == null) return null;` (null answers "not found")
+   - Exceptions: Throw `InvalidOperationException` for real errors (DB connection lost, etc.)
+   - Email failures: Log but don't throw (non-blocking)
+
+## Blog Search & Filtering
+
+**Location:** `Pages/BlogPost/Blogs.razor` (code-behind contains filtering logic)
+
+### Search Algorithm
+
+The Blogs page supports 3 search modes:
+
+1. **Search by Title:** Match against `BlogTitle` contains substring (case-insensitive)
+2. **Search by Topic/Tag:** Match against `Tag.TagName` collection
+3. **Search by Keywords:** Match against `Keywords.cs` constant array
+
+### Current Implementation Issues ⚠️
+
+**Anti-Pattern #1: Array-Based Indexing (BlogIndexes.cs)**
+```csharp
+// Current approach (FRAGILE)
+public static class BlogIndexes {
+    public const int Blog_Title = 0;
+    public const int Blog_Author = 1;
+    public const int Blog_Content = 2;
+    public const int Blog_BlogType = 3;
+    // ... etc
+}
+
+// Used like this in search logic
+var blogArray = blog.ToArray();
+if (blogArray[BlogIndexes.Blog_Title].Contains(searchTerm)) { ... }
+```
+
+**Why it's Bad:**
+- If database schema changes, indices must be manually updated
+- Easy to get index wrong during refactoring
+- No type safety; indices are just integers
+
+**Refactoring Goal:**
+Replace with typed object:
+```csharp
+// Better approach (SAFE)
+var blogData = new {
+    Title = blog.BlogTitle,
+    Author = blog.BlogAuthor,
+    Content = blog.BlogContent,
+    BlogType = blog.BlogType
+};
+if (blogData.Title.Contains(searchTerm)) { ... }
+```
+
+**Anti-Pattern #2: Business Logic in Component**
+Search/filtering logic lives in `Blogs.razor` code-behind, not in service. 
+
+**Current Workaround:** In refactoring, extract search to `BlogService.FilterBlogsAsync()`
+
+## Related Entities (Tags, Photos, Comments)
+
+### Tags
+
+**Model:** `Models/Tag.cs`
+```csharp
+public int TagId { get; set; }
+public int? BlogId { get; set; }
+public string TagName { get; set; }
+public Blog Blog { get; set; } // Navigation property
+```
+
+**Pattern:** Tag created with foreign key to Blog; deleted when blog deleted
+
+**Service Usage:**
+```csharp
+// Add tag to blog
+await blogService.AddBlogTagAsync(blogId: 5, tagName: "Blazor");
+
+// Search blogs by tag
+var blogsWithTag = await blogService.SearchBlogsByTagAsync("Blazor");
+
+// Remove tag
+await blogService.RemoveBlogTagAsync(blogId: 5, tagName: "Blazor");
+```
+
+**Gotcha:** Tag names should be lowercase/consistent for search; no validation in current code
+
+### Photos
+
+**Model:** `Models/Photos.cs`
+```csharp
+public int PhotoId { get; set; }
+public string PhotoName { get; set; }  // Used as key for lookup
+public byte[] PhotoImage { get; set; }  // Binary image data
+```
+
+**Pattern:** Photo indexed by name in array; NOT a foreign key relationship
+```csharp
+// In Blog entity (likely)
+public List<Photos> AssociatedPhotos { get; set; }
+```
+
+**Service Usage:**
+```csharp
+// Photos referenced in HTML <img> tags via URL
+// Not directly in BlogService; accessed via constants or service method
+var photoUrl = await blogService.GetPhotoUrlAsync("thumbnail");
+```
+
+**Gotcha:** Photo storage is in database (binary); consider CDN/file storage for large sites
+
+### Comments (Commentors)
+
+**Model:** `Models/Commentors.cs`
+```csharp
+public int CommentId { get; set; }
+public int BlogId { get; set; }
+public string CommentorName { get; set; }
+public string CommentorEmail { get; set; }
+public string CommentText { get; set; }
+public DateTime DateCommented { get; set; }
+public Blog Blog { get; set; } // Navigation property
+```
+
+**Pattern:** Comment references blog via foreign key; email sent to subscribers when comment added
+
+**Service Usage:**
+```csharp
+// Add comment
+var commentModel = new BlogCommentModel {
+    BlogId = 5,
+    CommentorName = "John Doe",
+    CommentorEmail = "john@example.com",
+    CommentText = "Great post!"
+};
+await blogService.AddCommentAsync(commentModel);
+// Automatically notifies subscribers via email
+
+// Retrieve comments
+var comments = await blogService.GetCommentsForBlogAsync(blogId: 5);
+```
+
+**Gotcha:** Comments auto-send subscriber notifications; test email configuration before deploying
+
+### Subscribers
+
+**Model:** `Models/Subscribers.cs`
+```csharp
+public int SubscriberId { get; set; }
+public string Email { get; set; }
+public DateTime DateSubscribed { get; set; }
+```
+
+**Pattern:** Simple email list; notified when new blog published or when comment added
+
+**Service Usage:**
+```csharp
+// Subscribe
+await blogService.SubscribeEmail("reader@example.com");
+
+// Notify all on new blog
+await blogService.NotifySubscribersAsync(blogId: 5, "New Blog: Blazor Tips");
+
+// Manual notify on comment
+await emailService.SendSubscriberNotificationAsync(email, blogId, commentText);
+```
+
+**Gotcha:** Email validation should use `RegexUtilities.ValidateEmail()` before subscribing
+
+## Email Integration (SendGrid)
+
+**Service:** `Infrastructure/Services/EmailService.cs`
+
+### When Emails Are Sent
+
+| Event | Method | Template | To |
+|-------|--------|----------|-----|
+| **New Comment** | `AddCommentAsync()` | Comment notification | All subscribers |
+| **New Blog** | `CreateBlogAsync()` → `NotifySubscribersAsync()` | New blog alert | All active subscribers |
+| **Contact Form** | `Submit.ProcessContactRequest()` | Contact form received | Site owner email |
+
+### Email Service Pattern
+
+```csharp
+public static class EmailService {
+    public static async Task SendEmailAsync(string toEmail, string subject, string htmlBody) {
+        try {
+            var sendGridClient = new SendGridClient(ContextOptions.SendGridKey);
+            var from = new EmailAddress("noreply@jsnover.net", "JSnoverDotNet");
+            var to = new EmailAddress(toEmail);
+            var msg = new SendGridMessage() {
+                From = from,
+                Subject = subject,
+                PlainTextContent = StripHtml(htmlBody),
+                HtmlContent = htmlBody
+            };
+            msg.AddTo(to);
+            var response = await sendGridClient.SendEmailAsync(msg);
+            return response.StatusCode == HttpStatusCode.Accepted;
+        } catch (Exception ex) {
+            LogError($"Email send failed to {toEmail}: {ex.Message}");
+            return false;  // Non-blocking failure
+        }
+    }
+}
+```
+
+### Configuration
+
+**API Key:** Stored in `ContextOptions.SendGridKey` (production: Azure Key Vault)
+**From Email:** Hard-coded as `noreply@jsnover.net` (must be verified in SendGrid)
+**Recipient Validation:** Use `RegexUtilities.ValidateEmail()` before sending
+
+### Gotchas & Best Practices
+
+1. **Async Non-Blocking:** Email failures don't crash the app; log and continue
+2. **HTML Escaping:** Always escape user content in email templates (comments)
+3. **Batch Sends:** For large subscriber lists, consider SendGrid `PersonalizedSendGridMessage`
+4. **Rate Limiting:** SendGrid has rate limits; implement queue if needed
+5. **Unsubscribe Links:** Consider adding unsubscribe link in email template (GDPR/CAN-SPAM compliance)
+
+## Constants & Configuration
+
+### BlogIndexes.cs (⚠️ FRAGILE - See Refactoring)
+
+Array indices mapping for blog property lookup:
+```csharp
+public static class BlogIndexes {
+    public const int Blog_Title = 0;
+    public const int Blog_Author = 1;
+    public const int Blog_Content = 2;
+    public const int Blog_BlogType = 3;
+    // ... etc (15+ indices total)
+}
+```
+
+**Current Use:** Search filtering in `Blogs.razor`
+**Refactoring Priority:** HIGH - Replace with typed object or dictionary
+
+### Keywords.cs
+
+Array of searchable keywords for blog filtering:
+```csharp
+public static class Keywords {
+    public static readonly string[] BlogKeywords = {
+        "blazor", "csharp", "dotnet", "web", "game", "solitaire", "blackjack", // ...
+    };
+}
+```
+
+**Use:** Keyword-based filtering in search
+**Improvement:** Consider full-text search in SQL Server for better performance
+
+## Common Tasks & Code Snippets
+
+### Add a New Blog Post
+
+```csharp
+// In WriteBlog.razor component
+private async Task SaveBlogAsync() {
+    var newBlog = new NewBlogModel {
+        Title = Title,
+        Author = Author,
+        Content = Content,
+        BlogType = BlogType
+    };
+    
+    var created = await blogService.CreateBlogAsync(newBlog);
+    
+    // Add tags
+    if (!string.IsNullOrEmpty(Tags)) {
+        foreach (var tag in Tags.Split(',')) {
+            await blogService.AddBlogTagAsync(created.BlogId, tag.Trim());
+        }
+    }
+    
+    // Notify subscribers
+    await blogService.NotifySubscribersAsync(created.BlogId, created.BlogTitle);
+    
+    NavManager.NavigateTo("/BlogPost/BlogView/" + created.BlogId);
+}
+```
+
+### Search Blogs
+
+```csharp
+// In Blogs.razor component
+private async Task SearchAsync() {
+    if (SearchMode == "title") {
+        FilteredBlogs = await blogService.SearchBlogsByTitleAsync(SearchTerm);
+    } else if (SearchMode == "tag") {
+        FilteredBlogs = await blogService.SearchBlogsByTagAsync(SearchTerm);
+    } else if (SearchMode == "keyword") {
+        FilteredBlogs = await blogService.SearchBlogsByKeywordAsync(SearchTerm);
+    }
+}
+```
+
+### Add a Comment
+
+```razor
+<!-- In BlogView.razor -->
+<form @onsubmit="SubmitCommentAsync">
+    <input @bind="CommentorName" placeholder="Your Name" />
+    <input @bind="CommentorEmail" type="email" placeholder="Your Email" />
+    <textarea @bind="CommentText" placeholder="Your comment..."></textarea>
+    <button type="submit">Post Comment</button>
+</form>
+
+@code {
+    private string CommentorName;
+    private string CommentorEmail;
+    private string CommentText;
+    
+    private async Task SubmitCommentAsync() {
+        if (!RegexUtilities.ValidateEmail(CommentorEmail)) {
+            ErrorMessage = "Invalid email";
+            return;
+        }
+        
+        var comment = new BlogCommentModel {
+            BlogId = BlogId,
+            CommentorName = CommentorName,
+            CommentorEmail = CommentorEmail,
+            CommentText = CommentText
+        };
+        
+        await blogService.AddCommentAsync(comment);
+        StateHasChanged();  // Refresh comment list
+    }
+}
+```
+
+### Display Blog List
+
+```razor
+<!-- In Blogs.razor -->
+@inject BlogService blogService
+
+@if (blogs != null) {
+    @foreach (var blog in blogs) {
+        <div class="blog-item">
+            <h3>@blog.Title</h3>
+            <p>By @blog.Author</p>
+            <p>@blog.Summary</p>
+            <div class="tags">
+                @foreach (var tag in blog.Tags) {
+                    <span class="tag">@tag</span>
+                }
+            </div>
+            <a href="/BlogPost/BlogView/@blog.Id">Read More</a>
+        </div>
+    }
+}
+
+@code {
+    private List<BlogListModel> blogs;
+    
+    protected override async Task OnInitializedAsync() {
+        blogs = await blogService.GetBlogsAsync();
+    }
+}
+```
+
+## Data Validation
+
+### Email Validation
+
+```csharp
+using Infrastructure.Utilities;
+
+if (!RegexUtilities.ValidateEmail(email)) {
+    throw new InvalidOperationException("Invalid email format");
+}
+```
+
+### Blog Content Validation
+
+```csharp
+public async Task<Blog> CreateBlogAsync(NewBlogModel model) {
+    // Validation
+    if (string.IsNullOrWhiteSpace(model.Title) || model.Title.Length > 255) {
+        throw new InvalidOperationException("Title required, max 255 chars");
+    }
+    if (string.IsNullOrWhiteSpace(model.Content) || model.Content.Length > 10000) {
+        throw new InvalidOperationException("Content required, max 10000 chars");
+    }
+    
+    // Sanitize (if needed for XSS prevention)
+    model.Content = SanitizeHtml(model.Content);  // Not currently implemented
+    
+    // Create
+    var blog = new Blog { ... };
+    await JsnoRepo.AddBlogAsync(blog);
+    return blog;
+}
+```
+
+## Testing Blog Functionality
+
+**Location:** `UnitTests/`
+
+### Unit Tests (Needed)
+
+```csharp
+[Fact]
+public async Task CreateBlogAsync_WithValidModel_ReturnsBlog() {
+    var model = new NewBlogModel {
+        Title = "Test Blog",
+        Author = "Test Author",
+        Content = "Test content",
+        BlogType = "Technical"
+    };
+    
+    var result = await _blogService.CreateBlogAsync(model);
+    
+    Assert.NotNull(result);
+    Assert.Equal("Test Blog", result.BlogTitle);
+    Assert.NotNull(result.BlogId);
+}
+
+[Fact]
+public async Task CreateBlogAsync_WithoutTitle_ThrowsException() {
+    var model = new NewBlogModel {
+        Title = "",  // Invalid
+        Author = "Test",
+        Content = "Content"
+    };
+    
+    await Assert.ThrowsAsync<InvalidOperationException>(
+        () => _blogService.CreateBlogAsync(model)
+    );
+}
+
+[Fact]
+public async Task SearchBlogsByTagAsync_WithValidTag_ReturnsBlogsWithTag() {
+    var blogs = await _blogService.SearchBlogsByTagAsync("Blazor");
+    
+    Assert.NotEmpty(blogs);
+    Assert.All(blogs, b => Assert.Contains("Blazor", b.Tags));
+}
+```
+
+### Current Testing Gaps
+
+| Gap | Solution |
+|-----|----------|
+| **No BlogService tests** | Create `BlogServiceTests.cs` with mocked repository |
+| **No comment validation** | Add tests for email validation, comment text sanitization |
+| **No tag search tests** | Implement tag search tests |
+| **Email not tested** | Mock SendGrid and test notification sending |
+
+## Performance & Optimization
+
+### Current Optimizations
+
+1. **Singleton Caching:** `BlogListModel` cached in DI; avoids repeated DB queries
+2. **Async I/O:** All BlogService methods async; doesn't block thread pool
+
+### Optimization Opportunities
+
+1. **Full-Text Search:** SQL Server supports `CONTAINS()` for better performance than LIKE on large blogs
+   ```sql
+   SELECT * FROM Blog WHERE CONTAINS(BlogContent, 'search term')
+   ```
+
+2. **Pagination:** Implement `GetBlogsPaginatedAsync(pageSize, pageNumber)` for large lists
+   ```csharp
+   var startIndex = (pageNumber - 1) * pageSize;
+   var blogs = dbContext.Blogs.Skip(startIndex).Take(pageSize).ToListAsync();
+   ```
+
+3. **Lazy Loading:** Avoid loading photos/tags for all blogs on list view; load on demand
+   ```csharp
+   // Instead of: Include(b => b.Tags).Include(b => b.Photos)
+   // Load tags/photos only when accessing BlogView
+   ```
+
+4. **Caching Strategy:** Implement Redis cache for blog display models (if deploying to cloud)
+   ```csharp
+   services.AddStackExchangeRedisCache(options => {
+       options.Configuration = Configuration.GetConnectionString("Redis");
+   });
+   ```
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **Blog list shows stale data** | Singleton cache not updated | Restart app or implement cache invalidation |
+| **Comment notification not sent** | SendGrid API key invalid or email unverified | Check `ContextOptions.SendGridKey`; verify "from" address in SendGrid |
+| **Blog search returns no results** | Search using BlogIndexes with wrong index | Verify correct index in `BlogIndexes.cs`; consider refactoring |
+| **Tag not associated with blog** | Tag created without setting BlogId FK | Ensure `AddBlogTagAsync()` sets `BlogId` before insert |
+| **Comments show HTML entities** | Content not HTML-decoded in display | Use `@Html.Raw()` or decode in DTO |
+| **Can't edit blog post** | BlogEditModel missing required field | Check DTO fields match form inputs |
+
+## Key Gotchas & Best Practices
+
+1. **DTO Naming:** Always suffix with `Model` to distinguish from domain entities
+2. **Null Checks:** Service methods return null for "not found"; don't assume success
+3. **Email Validation:** Always validate before subscribing or adding comment author email
+4. **Tag Case Sensitivity:** Tags stored as-is; search is case-insensitive by SQL; consider normalizing
+5. **Photo Storage:** Photos stored as binary in DB; plan migration to blob storage for production
+6. **Comment Moderation:** No approval workflow currently; consider adding before deploying widely
+7. **Singleton Cache:** BlogListModel never refreshes until app restart; not suitable for high-update scenarios
+8. **Async Best Practices:** Never use `.Result` on async methods; always await
+
+## Architecture Decision Records (ADRs)
+
+### ADR-001: DTO Pattern for Blog
+
+**Decision:** Use separate DTO classes for different operations (Display, Edit, List, etc.)
+**Rationale:** Decouples presentation from domain; easier to evolve API without breaking clients
+**Status:** Active
+**Notes:** `BlogDisplayModel` vs `BlogEditModel` prevents accidental data exposure
+
+### ADR-002: Singleton Caching for BlogListModel
+
+**Decision:** Register `BlogListModel` as Singleton in DI; cache across all requests
+**Rationale:** Improves performance; avoids repeated DB queries for list view
+**Trade-off:** Stale data until app restart
+**Status:** Active
+**Future:** Consider implementing cache invalidation strategy
+
+### ADR-003: Two DbContexts (Identity vs Business)
+
+**Decision:** Keep `ApplicationDbContext` (Identity) separate from `jsnoverdotnetdbContext` (Business)
+**Rationale:** Scaffolded independently; high refactoring cost to consolidate
+**Status:** Active
+**Gotcha:** No cross-context transactions; treat as separate databases
+
+## References
+
+- Parent Architecture: [jsnover.net/.copilot-instructions](../../.copilot-instructions)
+- Data Layer Details: [Data/.copilot-instructions](../Data/.copilot-instructions)
+- Infrastructure Patterns: [Infrastructure/.copilot-instructions](../Infrastructure/.copilot-instructions)
+- Related: [Components/.copilot-instructions](../Components/.copilot-instructions) for rendering patterns
+
+---
+
+**Last Updated:** February 2026 | **Service Pattern:** DTO-based | **Database:** SQL Server

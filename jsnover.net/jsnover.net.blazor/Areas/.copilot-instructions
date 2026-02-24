@@ -1,0 +1,633 @@
+# Authentication & Authorization - Copilot Instructions
+
+**Focus Area:** User authentication, role-based authorization, claims, identity integration, user management.
+
+**Key Files:**
+- Identity Setup: `Startup.cs`, `Program.cs`
+- Components: `Shared/LoginDisplay.razor`, `App.razor`
+- Models: `Data/ApplicationDbContext.cs`, `Models/AspNetUsers.cs`, `Models/AspNetRoles.cs`, etc.
+- Identity Pages: `Areas/Identity/` (scaffolded)
+- Configuration: `appsettings.json`
+
+## Authentication Architecture
+
+```
+User Login
+    ↓
+ASP.NET Core Identity (Password validation, cookie creation)
+    ↓
+Authentication Cookie (HttpOnly, signed)
+    ↓
+CascadingAuthenticationState (App.razor)
+    ↓
+AuthorizeRouteView (Pages)
+    ↓
+@authorize Directive (Razor components)
+```
+
+## ASP.NET Core Identity Overview
+
+**Framework:** Built-in ASP.NET Core identity system with role-based authorization
+
+**Components:**
+- **User & Password Management:** Hashing, validation, lockout policies
+- **Cookie-Based Authentication:** HttpOnly cookies prevent XSS; signed to prevent tampering
+- **Role-Based Authorization:** Users assigned to roles (Admin, User, etc.)
+- **Entity Framework Integration:** Users, roles, claims stored in SQL Server
+
+### Identity Registration (Setup)
+
+**Location:** `Startup.cs`
+
+```csharp
+public void ConfigureServices(IServiceCollection services) {
+    // User Identity
+    services.AddDefaultIdentity<IdentityUser>(options => {
+        options.Password.RequiredLength = 8;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireUppercase = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    })
+    .AddRoles<IdentityRole>()  // Enable roles
+    .AddEntityFrameworkStores<ApplicationDbContext>();
+    
+    // Cookie Options
+    services.ConfigureApplicationCookie(options => {
+        options.Cookie.HttpOnly = true;  // JavaScript can't access
+        options.Cookie.SameSite = SameSiteMode.Strict;  // CSRF protection
+        options.LoginPath = "/Identity/Account/Login";
+        options.LogoutPath = "/Identity/Account/Logout";
+        options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+    });
+}
+
+public void Configure(IApplicationBuilder app) {
+    app.UseAuthentication();  // MUST come before UseAuthorization
+    app.UseAuthorization();
+    
+    app.UseEndpoints(endpoints => {
+        endpoints.MapRazorPages();
+        endpoints.MapBlazorHub();
+        endpoints.MapFallbackToPage("/_Host");
+    });
+}
+```
+
+## Cascading Authentication State
+
+**Location:** `App.razor`
+
+```razor
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <p>Unauthorized. <a href="Identity/Account/Login">Login here</a></p>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+```
+
+### What CascadingAuthenticationState Does
+
+1. **Retrieves current authentication state** from `AuthenticationStateProvider`
+2. **Cascades state down** to all child components
+3. **Makes `@context.User`** available in any child component
+
+**Result:** All components have access to logged-in user info without extra DI
+
+## Authorization Directives & Attributes
+
+### @authorize Directive (Razor)
+
+```razor
+<!-- Require authentication -->
+@page "/SecretPage"
+@attribute [Authorize]
+
+<h1>Secret Content</h1>
+<p>Only authenticated users see this</p>
+
+@code {
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    
+    private ClaimsPrincipal user;
+    
+    protected override async Task OnInitializedAsync() {
+        var authState = await AuthenticationStateTask;
+        user = authState.User;
+        
+        if (!user.Identity.IsAuthenticated) {
+            NavManager.NavigateTo("/Identity/Account/Login");
+        }
+    }
+}
+```
+
+### Role-Based Authorization
+
+```razor
+@page "/AdminOnly"
+@attribute [Authorize(Roles = "Admin")]
+
+<h1>Admin Panel</h1>
+<p>Only admins can see this</p>
+```
+
+### Policy-Based Authorization
+
+```csharp
+// In Startup.cs
+services.AddAuthorizationPolicyProvider<DefaultAuthorizationPolicyProvider>();
+services.AddAuthorizationHandler<MiniumAgeRequirementHandler>();
+
+services.AddAuthorization(options => {
+    options.AddPolicy("MustBeAtLeast21", policy =>
+        policy.Requirements.Add(new MinimumAgeRequirement(21)));
+});
+
+// In Page
+[Authorize(Policy = "MustBeAtLeast21")]
+public class AdultOnlyPage : ComponentBase {
+    // ...
+}
+```
+
+## User & Role Management
+
+### Getting Current User
+
+```csharp
+@inject AuthenticationStateProvider authStateProvider
+
+@code {
+    private ClaimsPrincipal user;
+    
+    protected override async Task OnInitializedAsync() {
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        
+        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var email = user.FindFirst(ClaimTypes.Email)?.Value;
+        var roles = user.FindAll(ClaimTypes.Role);
+        
+        if (!user.Identity.IsAuthenticated) {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+}
+```
+
+### Creating Users Programmatically
+
+```csharp
+public class UserManagementService {
+    private readonly UserManager<IdentityUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
+    
+    public async Task<(bool Success, string Error)> CreateUserAsync(string email, string password, string[] roles) {
+        var user = new IdentityUser {
+            Email = email,
+            UserName = email,
+            EmailConfirmed = false
+        };
+        
+        var result = await _userManager.CreateAsync(user, password);
+        if (!result.Succeeded) {
+            return (false, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+        
+        // Assign roles
+        foreach (var role in roles) {
+            await _userManager.AddToRoleAsync(user, role);
+        }
+        
+        return (true, null);
+    }
+}
+```
+
+### Creating Roles
+
+```csharp
+public async Task EnsureRolesExistAsync() {
+    var roles = new[] { "Admin", "Moderator", "User" };
+    
+    foreach (var role in roles) {
+        if (!await _roleManager.RoleExistsAsync(role)) {
+            await _roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+}
+```
+
+### Assigning Roles to Users
+
+```csharp
+public async Task AssignRoleToUserAsync(string userId, string role) {
+    var user = await _userManager.FindByIdAsync(userId);
+    if (user != null) {
+        await _userManager.AddToRoleAsync(user, role);
+    }
+}
+
+public async Task RemoveRoleFromUserAsync(string userId, string role) {
+    var user = await _userManager.FindByIdAsync(userId);
+    if (user != null) {
+        await _userManager.RemoveFromRoleAsync(user, role);
+    }
+}
+```
+
+## Claims-Based Identity
+
+### Built-In Claims
+
+```csharp
+// Standard claim types
+ClaimTypes.NameIdentifier  // Unique user ID
+ClaimTypes.Email           // User email
+ClaimTypes.Name            // Display name
+ClaimTypes.Role            // Role assignment
+ClaimTypes.DateOfBirth     // DOB
+ClaimTypes.StreetAddress   // Address
+```
+
+### Custom Claims
+
+```csharp
+// Add custom claim to user
+var claims = new List<Claim> {
+    new Claim("IsEmailVerified", "true"),
+    new Claim("SubscriptionLevel", "Premium")
+};
+
+await _userManager.AddClaimsAsync(user, claims);
+
+// Retrieve custom claims
+var user = await _userManager.GetUserAsync(httpContext.User);
+var claims = await _userManager.GetClaimsAsync(user);
+var level = claims.FirstOrDefault(c => c.Type == "SubscriptionLevel")?.Value;
+```
+
+## Email Verification
+
+### Sending Verification Email
+
+```csharp
+public class AccountService {
+    private readonly UserManager<IdentityUser> _userManager;
+    private readonly EmailService _emailService;
+    
+    public async Task SendEmailVerificationAsync(IdentityUser user, string baseUrl) {
+        var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var encodedCode = Uri.EscapeDataString(code);
+        var confirmationLink = $"{baseUrl}/Identity/Account/ConfirmEmail?userId={user.Id}&code={encodedCode}";
+        
+        await _emailService.SendEmailAsync(
+            user.Email,
+            "Verify your email",
+            $"<a href='{confirmationLink}'>Click here to verify</a>"
+        );
+    }
+}
+```
+
+### Confirming Email
+
+```csharp
+public async Task<bool> ConfirmEmailAsync(string userId, string code) {
+    var user = await _userManager.FindByIdAsync(userId);
+    if (user == null) return false;
+    
+    var result = await _userManager.ConfirmEmailAsync(user, code);
+    return result.Succeeded;
+}
+```
+
+## Login Display Component
+
+**Location:** `Shared/LoginDisplay.razor`
+
+```razor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+
+<AuthorizeView>
+    <Authorized>
+        <a href="Identity/Account/Manage">Hello, @context.User.Identity.Name!</a>
+        <form method="post" action="Identity/Account/Logout">
+            <button type="submit" class="nav-link btn btn-link">Logout</button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Register">Register</a>
+        <a href="Identity/Account/Login">Login</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; }
+}
+```
+
+**AuthorizeView Component:** Renders content based on authorization state
+- **Authorized:** Shows if user authenticated
+- **NotAuthorized:** Shows if user not authenticated
+
+## Password Management
+
+### Password Reset
+
+```csharp
+public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword) {
+    var user = await _userManager.FindByEmailAsync(email);
+    if (user == null) return false;
+    
+    var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+    return result.Succeeded;
+}
+
+public async Task SendPasswordResetTokenAsync(string email, string baseUrl) {
+    var user = await _userManager.FindByEmailAsync(email);
+    if (user == null) return;
+    
+    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+    var encodedToken = Uri.EscapeDataString(token);
+    var resetLink = $"{baseUrl}/Identity/Account/ResetPassword?token={encodedToken}";
+    
+    await _emailService.SendEmailAsync(
+        email,
+        "Reset your password",
+        $"<a href='{resetLink}'>Click here to reset</a>"
+    );
+}
+```
+
+### Password Change
+
+```csharp
+public async Task<(bool Success, string Error)> ChangePasswordAsync(IdentityUser user, string currentPassword, string newPassword) {
+    var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+    
+    if (!result.Succeeded) {
+        var error = string.Join(", ", result.Errors.Select(e => e.Description));
+        return (false, error);
+    }
+    
+    return (true, null);
+}
+```
+
+## Two-Factor Authentication (Optional)
+
+### Enabling 2FA
+
+```csharp
+public async Task<string> GenerateTwoFactorTokenAsync(IdentityUser user) {
+    return await _userManager.GenerateUserTokenAsync(user, "Authenticator", "default");
+}
+
+public async Task<bool> VerifyTwoFactorTokenAsync(IdentityUser user, string token) {
+    return await _userManager.VerifyUserTokenAsync(user, "Authenticator", "default", token);
+}
+```
+
+**Current Status:** Not implemented; suitable for future enhancement
+
+## Lockout Policy
+
+**Configured in Startup.cs:**
+```csharp
+options.Lockout.MaxFailedAccessAttempts = 5;
+options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+options.Lockout.AllowedForNewUsers = true;
+```
+
+**Behavior:**
+- After 5 failed login attempts, user locked for 15 minutes
+- Automatic unlock after timeout
+- Admin can manually unlock
+
+## Password Hashing
+
+**Default:** PBKDF2 with 10,000 iterations
+
+```csharp
+// Hashing is automatic; don't hash manually
+var user = new IdentityUser { UserName = "user@example.com" };
+await _userManager.CreateAsync(user, password);  // Password hashed internally
+
+// To verify password (don't hash and compare yourself)
+var result = await _signInManager.PasswordSignInAsync(userName, password, isPersistent, lockoutOnFailure: true);
+if (result.Succeeded) {
+    // User authenticated
+}
+```
+
+## Common Authorization Scenarios
+
+### Scenario 1: Admin Only Page
+
+```razor
+@page "/Admin/Dashboard"
+@attribute [Authorize(Roles = "Admin")]
+
+<h1>Admin Dashboard</h1>
+
+@code {
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        var authState = await AuthenticationStateTask;
+        if (!authState.User.IsInRole("Admin")) {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
+```
+
+### Scenario 2: Owner-Only Edit
+
+```razor
+@page "/Blog/{blogId:int}"
+@attribute [Authorize]
+
+<h1>Edit Blog</h1>
+
+@code {
+    [Parameter]
+    public int BlogId { get; set; }
+    
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; }
+    
+    protected override async Task OnInitializedAsync() {
+        var authState = await AuthenticationStateTask;
+        var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        var blog = await blogService.GetBlogAsync(BlogId);
+        
+        // Check if current user is blog author
+        if (blog.AuthorId != userId) {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
+```
+
+### Scenario 3: Guest Checkout (No Auth Required)
+
+```razor
+@page "/Checkout"
+<!-- No @attribute [Authorize] -->
+
+<h1>Checkout</h1>
+<p>You can checkout as guest or <a href="/Identity/Account/Login">login</a></p>
+
+@code {
+    // Accessible to all
+}
+```
+
+## Integration with Blog/Games
+
+### Blog Authorization Examples
+
+**Write Blog:** Admin only
+```razor
+@page "/WriteBlog"
+@attribute [Authorize(Roles = "Admin")]
+```
+
+**Comment on Blog:** Logged-in users
+```razor
+@attribute [Authorize]
+
+<button @onclick="SubmitCommentAsync">Submit Comment</button>
+```
+
+**Edit My Comment:** Own comments only
+```csharp
+// Check in code-behind
+if (comment.AuthorId != currentUserId) {
+    throw new InvalidOperationException("Cannot edit others' comments");
+}
+```
+
+### Game Authorization Examples
+
+**Play Games:** Authenticated users (optional future requirement)
+```razor
+@page "/CardGames"
+@attribute [Authorize]  // If restricting games to logged-in users
+```
+
+## Migration Paths
+
+### Local to Production Authentication
+
+**Local (Development):**
+```csharp
+// appsettings.Development.json
+{
+    "ConnectionStrings": {
+        "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=jsnover_dev;..."
+    }
+}
+```
+
+**Production (Azure):**
+```csharp
+// Azure Key Vault
+{
+    "ConnectionStrings": {
+        "DefaultConnection": "<Azure SQL connection string>"
+    }
+}
+```
+
+**Read from Key Vault in Startup:**
+```csharp
+var keyVaultUrl = Environment.GetEnvironmentVariable("KEYVAULT_URL");
+var credential = new DefaultAzureCredential();
+var client = new SecretClient(new Uri(keyVaultUrl), credential);
+
+services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(client.GetSecret("DefaultConnection").Value.Value)
+);
+```
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **Login always fails** | Password hashing mismatch | Use `_userManager.CheckPasswordAsync()`, not manual hash |
+| **Authorization attribute not working** | Missing `<CascadingAuthenticationState>` | Ensure App.razor wraps router |
+| **Cookie not persisting** | Cookie.HttpOnly = false or missing SameSite | Check cookie options in ConfigureApplicationCookie |
+| **User claims not available** | Didn't call GetAuthenticationStateAsync | Use `[CascadingParameter] AuthenticationState` or inject `AuthenticationStateProvider` |
+| **2FA not working** | Phone provider not registered | Add `_userManager.RegisterTwoFactorProvider("Phone", new PhoneNumberTokenProvider())` |
+| **Password reset invalid** | Token expired or invalid | Regenerate token; default expiry is 24 hours |
+| **Logout not working** | Not using `SignOut()` method | Use `_signInManager.SignOutAsync()` instead of manual cookie deletion |
+
+## Gotchas & Best Practices
+
+1. **Always use UserManager/SignInManager:** Don't hash passwords manually
+2. **Verify emails:** Prevent account takeover; send confirmation link
+3. **HTTPS only:** Never send sensitive data over HTTP
+4. **Secure cookie settings:** Set `HttpOnly`, `SameSite=Strict`, `Secure` flag
+5. **Token expiration:** Implement refresh tokens for long-lived sessions
+6. **Audit logins:** Log successful/failed login attempts for security
+7. **Never log passwords:** Strip passwords from error messages
+8. **Test authorization:** Unit test authorization attributes and policies
+9. **Role naming:** Use consistent naming (Admin, User, Moderator, not admin, user)
+10. **Backup recovery codes:** For 2FA, provide recovery codes if phone lost
+
+## Architecture Decision Records (ADRs)
+
+### ADR-001: ASP.NET Core Identity
+
+**Decision:** Use built-in ASP.NET Core Identity for authentication
+**Rationale:** Proven, secure, integrated with EF Core, role-based out of box
+**Status:** Active
+**Alternatives:** Auth0, Okta, custom JWT (not recommended for web apps)
+
+### ADR-002: Cookie-Based Authentication
+
+**Decision:** Use HttpOnly cookies (default), not JWT for Blazor Server
+**Rationale:** Blazor Server-side apps; cookies are more secure (CSRF protection, auto-refresh)
+**Status:** Active
+**Note:** If moving to WebAssembly, switch to JWT tokens
+
+### ADR-003: Role-Based Authorization
+
+**Decision:** Use roles (Admin, User, Moderator) rather than fine-grained policies
+**Rationale:** Simpler to understand and implement; sufficient for this app's needs
+**Status:** Active
+**Future:** Implement policy-based authorization if more complex scenarios needed
+
+## References
+
+- Parent Architecture: [jsnover.net/.copilot-instructions](../../.copilot-instructions)
+- App Setup: `App.razor`, `Startup.cs`, `Program.cs`
+- LoginDisplay: [Components/.copilot-instructions (Shared components)](../Components/.copilot-instructions)
+- Blog Authorization: [.copilot-instructions (Blog area)](../.copilot-instructions)
+
+---
+
+**Last Updated:** February 2026 | **Pattern:** Cookie-based ASP.NET Core Identity | **Framework:** .NET 9.0
