@@ -1,0 +1,106 @@
+@using jsnover.net.blazor.Models
+
+@if (Comments == null || Comments.Count == 0)
+{
+    <div class="alert alert-info" role="alert">
+        No comments to display.
+    </div>
+}
+else
+{
+    <div class="comments-list">
+        @foreach (var comment in Comments)
+        {
+            <div class="comment-card border rounded p-3 mb-3 shadow-sm unapproved-comment">
+                <div class="row mb-2">
+                    <div class="col-md-8">
+                        <div class="comment-header d-flex align-items-center gap-2">
+                            <span class="badge bg-warning text-dark">Unapproved</span>
+                            <strong class="comment-email">@comment.Email</strong>
+                            <span class="text-muted d-none d-md-inline">(@comment.Name)</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted">@comment.SubmitDate.ToString("g")</small>
+                    </div>
+                </div>
+
+                @if (comment.PhotoId.HasValue)
+                {
+                    <p class="text-muted mb-2">
+                        <small>
+                            <strong>Photo ID:</strong> 
+                            <span class="photo-reference">@comment.PhotoId</span>
+                        </small>
+                    </p>
+                }
+
+                <div class="comment-message border-start ps-3 my-3">
+                    <p class="mb-0">@comment.Message</p>
+                </div>
+
+                <div class="verification-status mb-3">
+                    @if (comment.IsVerified)
+                    {
+                        <span class="badge bg-success">Email Verified</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Email Not Verified</span>
+                    }
+                </div>
+
+                <div class="comment-actions gap-2 d-flex flex-wrap">
+                    <button class="btn btn-sm btn-success" 
+                            @onclick="@(() => ApproveComment(comment.CommentId))"
+                            title="Approve this comment">
+                        <i class="bi bi-check-circle"></i> Approve
+                    </button>
+                    <button class="btn btn-sm btn-danger" 
+                            @onclick="@(() => RejectComment(comment.CommentId))"
+                            title="Reject and delete this comment">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
+                    <button class="btn btn-sm btn-warning" 
+                            @onclick="@(() => BanUser(comment.Email))"
+                            title="Ban this user (optional)">
+                        <i class="bi bi-ban"></i> Ban User
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<PhotoComment> Comments { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<int> OnApprove { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnReject { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnBanUser { get; set; }
+
+    private async Task ApproveComment(int commentId)
+    {
+        await OnApprove.InvokeAsync(commentId);
+    }
+
+    private async Task RejectComment(int commentId)
+    {
+        await OnReject.InvokeAsync(commentId);
+    }
+
+    private async Task BanUser(string email)
+    {
+        // TODO: Implement user ban functionality
+        if (OnBanUser.HasDelegate)
+        {
+            await OnBanUser.InvokeAsync(email);
+        }
+    }
+}

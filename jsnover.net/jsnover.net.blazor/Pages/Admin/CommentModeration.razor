@@ -1,0 +1,196 @@
+@page "/admin/comments"
+@using System.ComponentModel.DataAnnotations
+@using jsnover.net.blazor.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject NavigationManager nav
+@inject ILogger<CommentModeration> logger
+
+<div class="comment-moderation pad-25x3">
+    <div class="col-lg-12 jsno-background rounded-lg shadow-border">
+        <h2>Comment Moderation</h2>
+
+        <!-- Search and Filter Section -->
+        <div class="filter-section my-4 p-3 border rounded">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="form-label">Search by Email</label>
+                        <input type="text" class="form-control shadow-border-sm" 
+                               placeholder="Filter comments..." 
+                               @bind="searchEmail" 
+                               @oninput="UpdateSearch" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="form-label">Filter by Photo ID</label>
+                        <InputNumber class="form-control shadow-border-sm" 
+                                     @bind-Value="filterPhotoId" 
+                                     placeholder="Photo ID (0 for all)" />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-secondary form-control shadow-border-sm" @onclick="ClearFilters">
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        @if (isLoading)
+        {
+            <div class="text-center my-4">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading comments...</p>
+            </div>
+        }
+        else if (filteredComments.Count == 0)
+        {
+            <div class="alert alert-info" role="alert">
+                No unapproved comments found@(!string.IsNullOrEmpty(searchEmail) || filterPhotoId > 0 ? " matching your filters" : "").
+            </div>
+        }
+        else
+        {
+            <!-- Comments List Component -->
+            <CommentModerationList 
+                Comments="filteredComments" 
+                OnApprove="HandleApproveComment" 
+                OnReject="HandleRejectComment" />
+
+            <!-- Pagination Info -->
+            <div class="pagination-info mt-3 text-muted text-center">
+                <p>Showing @filteredComments.Count comment@(filteredComments.Count != 1 ? "s" : "") (Page @currentPage)</p>
+            </div>
+        }
+
+        <!-- Success/Error Messages -->
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                <strong>Success!</strong> @successMessage
+                <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                <strong>Error!</strong> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<PhotoComment> allComments = new();
+    private List<PhotoComment> filteredComments = new();
+    private string searchEmail = string.Empty;
+    private int filterPhotoId = 0;
+    private int currentPage = 1;
+    private const int PageSize = 20;
+    private bool isLoading = true;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            // TODO: Inject PhotoGalleryService and load unapproved comments
+            // allComments = await photoGalleryService.GetUnapprovedCommentsAsync();
+            allComments = new List<PhotoComment>();
+            ApplyFilters();
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to load comments";
+            logger.LogError(ex, "Error loading comments");
+            isLoading = false;
+        }
+    }
+
+    private void UpdateSearch(ChangeEventArgs e)
+    {
+        searchEmail = e?.Value?.ToString() ?? string.Empty;
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredComments = allComments
+            .Where(c => string.IsNullOrEmpty(searchEmail) || 
+                       c.Email.Contains(searchEmail, StringComparison.OrdinalIgnoreCase) ||
+                       c.Name.Contains(searchEmail, StringComparison.OrdinalIgnoreCase))
+            .Where(c => filterPhotoId == 0 || c.PhotoId == filterPhotoId)
+            .Where(c => !c.IsApproved) // Only unapproved comments
+            .OrderByDescending(c => c.SubmitDate)
+            .ToList();
+    }
+
+    private void ClearFilters()
+    {
+        searchEmail = string.Empty;
+        filterPhotoId = 0;
+        currentPage = 1;
+        ApplyFilters();
+    }
+
+    private async Task HandleApproveComment(int commentId)
+    {
+        try
+        {
+            // TODO: Approve comment via PhotoGalleryService
+            // await photoGalleryService.ApproveCommentAsync(commentId);
+            
+            var comment = allComments.FirstOrDefault(c => c.CommentId == commentId);
+            if (comment != null)
+            {
+                comment.IsApproved = true;
+                ApplyFilters();
+                successMessage = $"Comment from {comment.Email} approved successfully!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error approving comment: {ex.Message}";
+            logger.LogError(ex, "Error approving comment");
+        }
+    }
+
+    private async Task HandleRejectComment(int commentId)
+    {
+        try
+        {
+            // TODO: Delete/reject comment via PhotoGalleryService
+            // await photoGalleryService.DeleteCommentAsync(commentId);
+            
+            var comment = allComments.FirstOrDefault(c => c.CommentId == commentId);
+            if (comment != null)
+            {
+                string email = comment.Email;
+                allComments.Remove(comment);
+                ApplyFilters();
+                successMessage = $"Comment from {email} rejected and deleted!";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error rejecting comment: {ex.Message}";
+            logger.LogError(ex, "Error rejecting comment");
+        }
+    }
+}

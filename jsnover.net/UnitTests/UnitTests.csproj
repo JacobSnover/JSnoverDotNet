@@ -8,5 +8,12 @@
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
     <PackageReference Include="NUnit.Analyzers" Version="3.9.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="bunit" Version="1.31.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\jsnover.net.blazor\jsnover.net.blazor.csproj" />
   </ItemGroup>
 </Project>

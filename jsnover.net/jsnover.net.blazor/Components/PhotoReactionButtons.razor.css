@@ -1,0 +1,114 @@
+::deep .photo-reaction-buttons {
+    padding: 1rem 0;
+}
+
+.reactions-container {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.reaction-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    background: #f0f2f5;
+    border: 2px solid transparent;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #495057;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.reaction-btn:hover:not(:disabled) {
+    background: #e4e6eb;
+    transform: scale(1.05);
+}
+
+.reaction-btn .emoji {
+    font-size: 1.2rem;
+    display: inline-block;
+}
+
+.reaction-btn .reaction-count {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.reaction-btn.reacted {
+    background: #e7f1ff;
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.reaction-btn.reacted .reaction-count {
+    color: #667eea;
+}
+
+.reaction-btn.reacted:hover {
+    background: #d4e0ff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.reaction-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.reaction-btn:disabled.reacted {
+    cursor: default;
+    opacity: 1;
+}
+
+/* Touch/Mobile States */
+@media (hover: none) {
+    .reaction-btn:not(:disabled):active {
+        background: #d4e0ff;
+        border-color: #667eea;
+        color: #667eea;
+        transform: scale(0.98);
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 576px) {
+    .reactions-container {
+        gap: 0.5rem;
+    }
+
+    .reaction-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .reaction-btn .emoji {
+        font-size: 1rem;
+    }
+
+    .reaction-btn .reaction-count {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .reactions-container {
+        gap: 0.3rem;
+        justify-content: center;
+    }
+
+    .reaction-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .reaction-btn .emoji {
+        font-size: 0.9rem;
+    }
+}

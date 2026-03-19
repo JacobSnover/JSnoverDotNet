@@ -1,0 +1,44 @@
+@using jsnover.net.blazor.Models
+
+<div class="photogallery">
+    @if (Photos?.Count > 0)
+    {
+        <div class="gallery-grid">
+            @foreach (var photo in Photos)
+            {
+                <div class="gallery-item" @onclick="@(() => OnPhotoClicked.InvokeAsync(photo))">
+                    <div class="gallery-thumbnail-wrapper">
+                        <img 
+                            src="@photo.ThumbnailUrl" 
+                            alt="@photo.Title"
+                            loading="lazy"
+                            class="gallery-thumbnail" />
+                        <div class="gallery-overlay">
+                            <div class="gallery-icons">
+                                <span class="view-icon">👁️</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gallery-title">@photo.Title</div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="gallery-message">
+            <p>No photos to display.</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<StandalonePhoto> Photos { get; set; } = new();
+
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public EventCallback<StandalonePhoto> OnPhotoClicked { get; set; }
+}

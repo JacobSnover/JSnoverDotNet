@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /photos
+Disallow: /admin/photos
+Disallow: /admin/comments
+Disallow: /api/photos
+Disallow: /api/reactions
+Disallow: /api/comments
+Disallow: /identity
+Allow: /photos/public-cache

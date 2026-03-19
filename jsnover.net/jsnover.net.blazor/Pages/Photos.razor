@@ -1,0 +1,230 @@
+@page "/photos"
+
+@using jsnover.net.blazor.Infrastructure.Services
+@using jsnover.net.blazor.Models
+@using Microsoft.AspNetCore.Components.Web
+
+@inject PhotoGalleryService PhotoGalleryService
+@inject NavigationManager NavigationManager
+
+<div class="photos-page">
+    <!-- Meta tags for SEO and security -->
+    <HeadContent>
+        <!-- Search engine and web crawler restrictions -->
+        <meta name="robots" content="noindex, nofollow" />
+        
+        <!-- AI/ML training restrictions -->
+        <meta name="bingbot" content="noindex, nofollow" />
+        <meta name="ChatGPT-User" content="noindex" />
+        <meta name="GPTBot" content="noindex" />
+        <meta name="CCBot" content="noindex" />
+        <meta name="googlebot" content="noindex, nofollow" />
+        
+        <!-- Prevent AI dataset scraping -->
+        <meta name="ai-content-locked" content="true" />
+        
+        <!-- Copyright and rights notice -->
+        <meta name="copyright" content="Copyright (c) 2024 jsnover.net. All rights reserved." />
+        <meta name="author" content="Randy Snover" />
+    </HeadContent>
+
+    <!-- Hero / Carousel Section -->
+    <section class="hero-section">
+        <div class="container-fluid">
+            @if (carouselPhotos?.Count > 0)
+            {
+                <PhotoCarousel Photos="carouselPhotos" OnPhotoSelected="HandlePhotoSelected" />
+            }
+            else if (isLoadingCarousel)
+            {
+                <div class="carousel-loading">
+                    <p>Loading carousel...</p>
+                </div>
+            }
+            else
+            {
+                <div class="carousel-empty">
+                    <p>No carousel photos available.</p>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Filter Tabs Section -->
+    <section class="filter-section">
+        <div class="container">
+            <div class="filter-tabs btn-group" role="group">
+                <button 
+                    type="button" 
+                    class="btn @(currentFilter == "all" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => HandleFilterChange("all"))">
+                    All Photos
+                </button>
+                <button 
+                    type="button" 
+                    class="btn @(currentFilter == "blog" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => HandleFilterChange("blog"))">
+                    Blog Photos
+                </button>
+                <button 
+                    type="button" 
+                    class="btn @(currentFilter == "standalone" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => HandleFilterChange("standalone"))">
+                    Standalone
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Photo Grid Section -->
+    <section class="gallery-section">
+        <div class="container">
+            @if (isLoadingGallery)
+            {
+                <div class="gallery-loading">
+                    <p>Loading gallery...</p>
+                </div>
+            }
+            else if (galleryPhotos?.Count > 0)
+            {
+                <PhotoGallery 
+                    Photos="galleryPhotos" 
+                    CurrentPage="currentPage"
+                    OnPhotoClicked="HandlePhotoClicked" />
+
+                <!-- Pagination Controls -->
+                <div class="pagination-controls">
+                    <button 
+                        class="btn btn-outline-primary" 
+                        @onclick="PreviousPage"
+                        disabled="@(currentPage <= 1)">
+                        Previous
+                    </button>
+                    <span class="page-info">Page @currentPage</span>
+                    <button 
+                        class="btn btn-outline-primary" 
+                        @onclick="NextPage"
+                        disabled="@(galleryPhotos.Count < pageSize)">
+                        Next
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="gallery-empty">
+                    <p>No photos available in this category.</p>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Photo Detail Modal/Page -->
+    @if (showPhotoDetail && selectedPhoto != null)
+    {
+        <div class="photo-detail-overlay" @onclick="ClosePhotoDetail">
+            <div class="photo-detail-container" @onclick:stopPropagation>
+                <PhotoDetail Photo="selectedPhoto" OnClose="ClosePhotoDetail" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<StandalonePhoto> carouselPhotos;
+    private List<StandalonePhoto> galleryPhotos;
+    private StandalonePhoto selectedPhoto;
+    
+    private bool isLoadingCarousel = true;
+    private bool isLoadingGallery = true;
+    private bool showPhotoDetail = false;
+    
+    private string currentFilter = "all";
+    private int currentPage = 1;
+    private const int pageSize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCarouselPhotos();
+        await LoadGalleryPhotos();
+    }
+
+    private async Task LoadCarouselPhotos()
+    {
+        isLoadingCarousel = true;
+        try
+        {
+            carouselPhotos = await PhotoGalleryService.GetCarouselPhotos(5);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading carousel: {ex.Message}");
+            carouselPhotos = new List<StandalonePhoto>();
+        }
+        finally
+        {
+            isLoadingCarousel = false;
+        }
+    }
+
+    private async Task LoadGalleryPhotos()
+    {
+        isLoadingGallery = true;
+        currentPage = 1;
+        try
+        {
+            galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter, currentPage, pageSize);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading gallery: {ex.Message}");
+            galleryPhotos = new List<StandalonePhoto>();
+        }
+        finally
+        {
+            isLoadingGallery = false;
+        }
+    }
+
+    private async Task HandleFilterChange(string filter)
+    {
+        currentFilter = filter;
+        await LoadGalleryPhotos();
+    }
+
+    private void HandlePhotoSelected(int photoId)
+    {
+        var photo = carouselPhotos?.FirstOrDefault(p => p.PhotoId == photoId);
+        if (photo != null)
+        {
+            selectedPhoto = photo;
+            showPhotoDetail = true;
+        }
+    }
+
+    private void HandlePhotoClicked(StandalonePhoto photo)
+    {
+        selectedPhoto = photo;
+        showPhotoDetail = true;
+    }
+
+    private void ClosePhotoDetail()
+    {
+        showPhotoDetail = false;
+        selectedPhoto = null;
+    }
+
+    private async Task NextPage()
+    {
+        currentPage++;
+        await LoadGalleryPhotos();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadGalleryPhotos();
+        }
+    }
+}

@@ -32,6 +32,10 @@ namespace jsnover.net.blazor.Models
         public virtual DbSet<Subscribers> Subscribers { get; set; }
         public virtual DbSet<Tag> Tag { get; set; }
         public virtual DbSet<VisitorCounter> VisitorCounter { get; set; }
+        public virtual DbSet<StandalonePhoto> StandalonePhoto { get; set; }
+        public virtual DbSet<PhotoComment> PhotoComment { get; set; }
+        public virtual DbSet<PhotoReaction> PhotoReaction { get; set; }
+        public virtual DbSet<RateLimitLog> RateLimitLog { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -251,6 +255,130 @@ namespace jsnover.net.blazor.Models
                 entity.Property(e => e.VisitorDate)
                     .HasColumnName("visitorDate")
                     .HasColumnType("date");
+            });
+
+            // Photo Gallery Models Configuration
+            modelBuilder.Entity<StandalonePhoto>(entity =>
+            {
+                entity.HasKey(e => e.PhotoId);
+
+                entity.Property(e => e.Title)
+                    .IsRequired()
+                    .HasMaxLength(250);
+
+                entity.Property(e => e.Description)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.Url)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.ThumbnailUrl)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.Tags)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.UploadDate)
+                    .HasColumnType("datetime2");
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnType("datetime2");
+
+                entity.Property(e => e.DisplayOrder)
+                    .HasDefaultValue(0);
+
+                entity.Property(e => e.IsPublished)
+                    .HasDefaultValue(true);
+            });
+
+            modelBuilder.Entity<PhotoComment>(entity =>
+            {
+                entity.HasKey(e => e.CommentId);
+
+                entity.Property(e => e.Email)
+                    .IsRequired()
+                    .HasMaxLength(256);
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Message)
+                    .IsRequired()
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.SubmitDate)
+                    .HasColumnType("datetime2");
+
+                entity.Property(e => e.VerificationCode)
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.VerificationCodeExpiry)
+                    .HasColumnType("datetime2");
+
+                entity.Property(e => e.IsVerified)
+                    .HasDefaultValue(false);
+
+                entity.Property(e => e.IsApproved)
+                    .HasDefaultValue(false);
+
+                entity.HasOne(d => d.Photo)
+                    .WithMany(p => p.Comments)
+                    .HasForeignKey(d => d.PhotoId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_PhotoComment_StandalonePhoto");
+
+                entity.HasOne(d => d.Blog)
+                    .WithMany()
+                    .HasForeignKey(d => d.BlogId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_PhotoComment_Blog");
+            });
+
+            modelBuilder.Entity<PhotoReaction>(entity =>
+            {
+                entity.HasKey(e => e.ReactionId);
+
+                entity.HasIndex(e => new { e.PhotoId, e.SessionId, e.ReactionType })
+                    .IsUnique()
+                    .HasDatabaseName("UX_PhotoReaction_PhotoSessionReactionType");
+
+                entity.Property(e => e.ReactionType)
+                    .IsRequired()
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.SessionId)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.CreatedDate)
+                    .HasColumnType("datetime2");
+
+                entity.HasOne(d => d.Photo)
+                    .WithMany(p => p.Reactions)
+                    .HasForeignKey(d => d.PhotoId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasConstraintName("FK_PhotoReaction_StandalonePhoto");
+            });
+
+            modelBuilder.Entity<RateLimitLog>(entity =>
+            {
+                entity.HasKey(e => e.LogId);
+
+                entity.Property(e => e.IpAddress)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Endpoint)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.Timestamp)
+                    .HasColumnType("datetime2");
+
+                entity.HasIndex(e => new { e.IpAddress, e.Endpoint, e.Timestamp })
+                    .HasDatabaseName("IX_RateLimitLog_IpEndpointTimestamp");
             });
 
             OnModelCreatingPartial(modelBuilder);

@@ -1,0 +1,160 @@
+@using jsnover.net.blazor.Models
+
+<div class="photocarousel">
+    @if (Photos?.Count > 0)
+    {
+        <div class="carousel-wrapper">
+            <!-- Current Photo Display -->
+            <div class="carousel-main">
+                <img 
+                    src="@Photos[currentIndex].Url" 
+                    alt="@Photos[currentIndex].Title"
+                    loading="lazy"
+                    class="carousel-image" />
+                
+                <!-- Photo Overlay Info -->
+                <div class="carousel-overlay">
+                    <div class="carousel-info">
+                        <h2 class="carousel-title">@Photos[currentIndex].Title</h2>
+                        <p class="carousel-description">@Photos[currentIndex].Description</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Arrows -->
+                <button class="carousel-arrow carousel-prev" @onclick="PreviousPhoto" aria-label="Previous photo">
+                    <span>&#10094;</span>
+                </button>
+                <button class="carousel-arrow carousel-next" @onclick="NextPhoto" aria-label="Next photo">
+                    <span>&#10095;</span>
+                </button>
+
+                <!-- Play/Pause Control -->
+                <button class="carousel-control" @onclick="ToggleAutoRotate" aria-label="Toggle auto-rotate">
+                    <span class="control-icon">@(isAutoRotating ? "⏸" : "▶")</span>
+                </button>
+            </div>
+
+            <!-- Counter and Indicators -->
+            <div class="carousel-footer">
+                <div class="carousel-counter">
+                    @(currentIndex + 1) / @Photos.Count
+                </div>
+
+                <!-- Indicator Dots -->
+                <div class="carousel-indicators">
+                    @for (int i = 0; i < Photos.Count; i++)
+                    {
+                        var index = i;
+                        <button 
+                            class="indicator @(currentIndex == index ? "active" : "")" 
+                            @onclick="@(() => GoToPhoto(index))"
+                            aria-label="Go to photo @(index + 1)">
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="carousel-empty">
+            <p>No photos to display</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<StandalonePhoto> Photos { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<int> OnPhotoSelected { get; set; }
+
+    private int currentIndex = 0;
+    private bool isAutoRotating = true;
+    private System.Threading.Timer autoRotateTimer;
+    private const int RotateIntervalMs = 5000; // 5 seconds
+
+    protected override void OnInitialized()
+    {
+        StartAutoRotate();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && isAutoRotating)
+        {
+            StartAutoRotate();
+        }
+    }
+
+    private void StartAutoRotate()
+    {
+        if (isAutoRotating && Photos?.Count > 1)
+        {
+            autoRotateTimer = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(() =>
+                {
+                    if (isAutoRotating)
+                    {
+                        currentIndex = (currentIndex + 1) % Photos.Count;
+                        StateHasChanged();
+                    }
+                });
+            }, null, RotateIntervalMs, RotateIntervalMs);
+        }
+    }
+
+    private void StopAutoRotate()
+    {
+        autoRotateTimer?.Dispose();
+        autoRotateTimer = null;
+    }
+
+    private void NextPhoto()
+    {
+        if (Photos?.Count > 0)
+        {
+            currentIndex = (currentIndex + 1) % Photos.Count;
+            OnPhotoSelected.InvokeAsync(Photos[currentIndex].PhotoId);
+        }
+    }
+
+    private void PreviousPhoto()
+    {
+        if (Photos?.Count > 0)
+        {
+            currentIndex = (currentIndex - 1 + Photos.Count) % Photos.Count;
+            OnPhotoSelected.InvokeAsync(Photos[currentIndex].PhotoId);
+        }
+    }
+
+    private void GoToPhoto(int index)
+    {
+        if (Photos?.Count > 0 && index >= 0 && index < Photos.Count)
+        {
+            currentIndex = index;
+            OnPhotoSelected.InvokeAsync(Photos[currentIndex].PhotoId);
+        }
+    }
+
+    private void ToggleAutoRotate()
+    {
+        isAutoRotating = !isAutoRotating;
+        
+        if (isAutoRotating)
+        {
+            StartAutoRotate();
+        }
+        else
+        {
+            StopAutoRotate();
+        }
+    }
+
+    public void Dispose()
+    {
+        StopAutoRotate();
+    }
+}
