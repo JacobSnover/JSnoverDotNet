@@ -1,6 +1,8 @@
 using Bunit;
 using jsnover.net.blazor.Components;
 using jsnover.net.blazor.Infrastructure.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
 using System;
@@ -11,13 +13,13 @@ namespace jsnover.net.blazor.UnitTests
     [TestFixture]
     public class CaptchaComponentTests
     {
-        private TestContext ctx;
+        private Bunit.TestContext ctx;
         private Mock<BotProtectionService> mockBotProtectionService;
 
         [SetUp]
         public void Setup()
         {
-            ctx = new TestContext();
+            ctx = new Bunit.TestContext();
             mockBotProtectionService = new Mock<BotProtectionService>();
             
             // Default mock behavior for CAPTCHA generation
@@ -33,7 +35,7 @@ namespace jsnover.net.blazor.UnitTests
                 .Setup(s => s.VerifyCaptcha(It.IsNotIn(8), 8))
                 .Returns(false);
 
-            ctx.Services.AddScoped(_ => mockBotProtectionService.Object);
+            ctx.Services.AddScoped<BotProtectionService>(_ => mockBotProtectionService.Object);
         }
 
         [TearDown]
@@ -247,7 +249,8 @@ namespace jsnover.net.blazor.UnitTests
 
             // Act
             var input = cut.Find(".captcha-input");
-            await input?.ChangeAsync("8");
+            // Simulate input change by triggering the change event properly
+            await input?.InvokeAsync("change", new ChangeEventArgs { Value = "8" });
             
             var buttons = cut.FindAll(".captcha-actions button");
             buttons[0].Click(); // Click Verify

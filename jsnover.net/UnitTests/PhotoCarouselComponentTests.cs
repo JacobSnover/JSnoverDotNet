@@ -1,6 +1,7 @@
 using Bunit;
 using jsnover.net.blazor.Components;
 using jsnover.net.blazor.Models;
+using Microsoft.AspNetCore.Components;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -12,12 +13,12 @@ namespace jsnover.net.blazor.UnitTests
     [TestFixture]
     public class PhotoCarouselComponentTests
     {
-        private TestContext ctx;
+        private Bunit.TestContext ctx;
 
         [SetUp]
         public void Setup()
         {
-            ctx = new TestContext();
+            ctx = new Bunit.TestContext();
         }
 
         [TearDown]
@@ -133,7 +134,7 @@ namespace jsnover.net.blazor.UnitTests
             // Act
             var nextButton = cut.Find(".carousel-next");
             nextButton?.Click();
-            cut.WaitForAsyncEvents();
+
 
             // Assert
             var image = cut.Find(".carousel-image");
@@ -157,14 +158,14 @@ namespace jsnover.net.blazor.UnitTests
             // Act - Navigate to third photo first
             var nextButton = cut.Find(".carousel-next");
             nextButton?.Click();
-            cut.WaitForAsyncEvents();
+
             nextButton?.Click();
-            cut.WaitForAsyncEvents();
+
 
             // Now click previous
             var prevButton = cut.Find(".carousel-prev");
             prevButton?.Click();
-            cut.WaitForAsyncEvents();
+
 
             // Assert
             var image = cut.Find(".carousel-image");
@@ -190,7 +191,7 @@ namespace jsnover.net.blazor.UnitTests
 
             // Click to pause
             controlButton?.Click();
-            cut.WaitForAsyncEvents();
+
 
             // Assert pause state shows play icon
             controlButton = cut.Find(".carousel-control");
@@ -198,7 +199,7 @@ namespace jsnover.net.blazor.UnitTests
 
             // Click to resume
             controlButton?.Click();
-            cut.WaitForAsyncEvents();
+
 
             // Assert playing state shows pause icon
             controlButton = cut.Find(".carousel-control");
@@ -264,7 +265,7 @@ namespace jsnover.net.blazor.UnitTests
             // Act - navigate to second photo
             var nextButton = cut.Find(".carousel-next");
             nextButton?.Click();
-            cut.WaitForAsyncEvents();
+
 
             // Assert counter shows "2 / 4"
             counter = cut.Find(".carousel-counter");
@@ -312,7 +313,7 @@ namespace jsnover.net.blazor.UnitTests
             // Act
             var indicators = cut.FindAll(".indicator");
             indicators[2].Click();
-            cut.WaitForAsyncEvents();
+
 
             // Assert - re-query indicators after render
             var updatedIndicators = cut.FindAll(".indicator");

@@ -75,7 +75,7 @@ namespace UnitTests
             var expiryTime = DateTime.UtcNow.AddHours(1);
             var photoComment = new PhotoComment
             {
-                PhotoCommentId = 1,
+                CommentId = 1,
                 Email = "test@example.com",
                 VerificationCode = validCode,
                 VerificationCodeExpiry = expiryTime,
@@ -86,7 +86,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult(photoComment));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
             _mockDbContext.Setup(x => x.SaveChangesAsync(default)).Returns(Task.FromResult(1));
 
             // Act
@@ -104,7 +104,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult<PhotoComment>(null));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
 
             // Act
             var result = await _service.VerifyCode("test@example.com", "WRONGCODE");
@@ -124,7 +124,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult<PhotoComment>(null));  // Query finds nothing because expiry > UtcNow fails
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
 
             // Act
             var result = await _service.VerifyCode("test@example.com", expiredCode);
@@ -198,7 +198,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult<PhotoComment>(null));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
 
             // Act
             var result = await _service.VerifyCode("test@example.com", code);
@@ -215,7 +215,7 @@ namespace UnitTests
             var expiryTime = DateTime.UtcNow.AddHours(-23);
             var photoComment = new PhotoComment
             {
-                PhotoCommentId = 1,
+                CommentId = 1,
                 Email = "test@example.com",
                 VerificationCode = code,
                 VerificationCodeExpiry = expiryTime.AddHours(24),  // 1 hour in the future
@@ -226,7 +226,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult(photoComment));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
             _mockDbContext.Setup(x => x.SaveChangesAsync(default)).Returns(Task.FromResult(1));
 
             // Act
@@ -247,7 +247,7 @@ namespace UnitTests
             var validCode = "CODE0001";
             var photoComment = new PhotoComment
             {
-                PhotoCommentId = 1,
+                CommentId = 1,
                 Email = "test@example.com",
                 VerificationCode = validCode,
                 VerificationCodeExpiry = DateTime.UtcNow.AddHours(1),
@@ -258,7 +258,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult(photoComment));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
             _mockDbContext.Setup(x => x.SaveChangesAsync(default)).Returns(Task.FromResult(1));
 
             // Act
@@ -282,7 +282,7 @@ namespace UnitTests
             var code = "MULTI001";
             var photoComment = new PhotoComment
             {
-                PhotoCommentId = 1,
+                CommentId = 1,
                 Email = "test@example.com",
                 VerificationCode = code,
                 VerificationCodeExpiry = DateTime.UtcNow.AddHours(1),
@@ -293,7 +293,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .Returns(Task.FromResult(photoComment));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
             _mockDbContext.Setup(x => x.SaveChangesAsync(default)).Returns(Task.FromResult(1));
 
             // Act - First attempt
@@ -378,7 +378,7 @@ namespace UnitTests
             mockDbSet.Setup(x => x.FirstOrDefaultAsync(It.IsAny<System.Linq.Expressions.Expression<Func<PhotoComment, bool>>>(), default))
                 .ThrowsAsync(new Exception("Database error"));
 
-            _mockDbContext.Setup(x => x.PhotoComments).Returns(mockDbSet.Object);
+            _mockDbContext.Setup(x => x.PhotoComment).Returns(mockDbSet.Object);
 
             // Act
             var result = await _service.VerifyCode("test@example.com", "CODE123");

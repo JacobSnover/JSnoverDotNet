@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Moq;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using System;
 using System.Threading.Tasks;
 using jsnover.net.blazor.Infrastructure.Middleware;
@@ -23,7 +24,8 @@ namespace UnitTests
         private Mock<HttpResponse> _mockResponse;
         private Mock<IHeaderDictionary> _mockRequestHeaders;
         private Mock<IHeaderDictionary> _mockResponseHeaders;
-        private Mock<IConnectionInfo> _mockConnection;
+        // Note: Using dynamic instead of IConnectionInfo which is not available in this ASP.NET Core version
+        private dynamic _mockConnection;
 
         [SetUp]
         public void SetUp()
@@ -32,7 +34,9 @@ namespace UnitTests
             
             _mockRequestHeaders = new Mock<IHeaderDictionary>();
             _mockResponseHeaders = new Mock<IHeaderDictionary>();
-            _mockConnection = new Mock<IConnectionInfo>();
+            // Mock connection dynamically since IConnectionInfo may not be available
+            _mockConnection = new Moq.Mock<object>();
+            ((Moq.Mock<object>)_mockConnection).SetupProperty(x => x.RemoteIpAddress, null);
             
             _mockRequest = new Mock<HttpRequest>();
             _mockRequest.Setup(x => x.Headers).Returns(_mockRequestHeaders.Object);
@@ -341,7 +345,7 @@ namespace UnitTests
         #region Rate Limit Persistence Tests
 
         [Test]
-        public async Task Middleware_RateLimitPersists_Across MultipleRequests()
+        public async Task Middleware_RateLimitPersists_AcrossMultipleRequests()
         {
             // Arrange
             var nextMiddleware = new RequestDelegate(async ctx => { });

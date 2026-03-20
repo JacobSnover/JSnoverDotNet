@@ -1,6 +1,8 @@
 using Bunit;
+using bunit;
 using jsnover.net.blazor.Components;
 using jsnover.net.blazor.Models;
+using Microsoft.AspNetCore.Components;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -11,12 +13,12 @@ namespace jsnover.net.blazor.UnitTests
     [TestFixture]
     public class PhotoDetailComponentTests
     {
-        private TestContext ctx;
+        private Bunit.TestContext ctx;
 
         [SetUp]
         public void Setup()
         {
-            ctx = new TestContext();
+            ctx = new Bunit.TestContext();
         }
 
         [TearDown]

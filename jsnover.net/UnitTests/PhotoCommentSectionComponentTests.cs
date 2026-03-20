@@ -12,12 +12,12 @@ namespace jsnover.net.blazor.UnitTests
     [TestFixture]
     public class PhotoCommentSectionComponentTests
     {
-        private TestContext ctx;
+        private Bunit.TestContext ctx;
 
         [SetUp]
         public void Setup()
         {
-            ctx = new TestContext();
+            ctx = new Bunit.TestContext();
         }
 
         [TearDown]
