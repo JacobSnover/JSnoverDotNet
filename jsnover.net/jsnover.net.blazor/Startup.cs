@@ -10,6 +10,7 @@ using jsnover.net.blazor.Areas.Identity;
 using jsnover.net.blazor.Data;
 using jsnover.net.blazor.Infrastructure.Services;
 using jsnover.net.blazor.DataTransferObjects.Common;
+using jsnover.net.blazor.Models;
 using Blazored.SessionStorage;
 using jsnover.net.blazor.DataTransferObjects.BlogModels;
 
@@ -23,6 +24,7 @@ namespace jsnover.net.blazor
         }
 
         public IConfiguration Configuration { get; }
+        public string ConnectionString { get; private set; } = @"Data Source=SQL1002.site4now.net;Initial Catalog=db_abfcbc_jsnoverdotnetdb;Persist Security Info=True;User ID=db_abfcbc_jsnoverdotnetdb_admin;Password=ShaKytOOth1!;Pooling=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Command Timeout=0";
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -31,8 +33,11 @@ namespace jsnover.net.blazor
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
-                    Configuration.GetConnectionString("DefaultConnection")));
-            ContextOptions.connectionString = Configuration.GetConnectionString("DefaultConnection");
+                    ConnectionString));
+            services.AddDbContext<jsnoverdotnetdbContext>(options =>
+                options.UseSqlServer(
+                    ConnectionString));
+            ContextOptions.connectionString = ConnectionString;
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddRazorPages();
@@ -44,6 +49,7 @@ namespace jsnover.net.blazor
             services.AddScoped<BlogService>();
             services.AddScoped<BlogViewModel>();
             services.AddScoped<CardService>();
+            services.AddScoped<HealthTrackerService>();
             services.AddBlazoredSessionStorage();
             services.AddControllersWithViews();
             services.AddHttpClient();
