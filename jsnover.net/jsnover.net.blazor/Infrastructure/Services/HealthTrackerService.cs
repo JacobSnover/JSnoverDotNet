@@ -87,7 +87,11 @@ namespace jsnover.net.blazor.Infrastructure.Services
                 MaxDiastolic = entries.Max(e => e.Diastolic),
                 MinDiastolic = entries.Min(e => e.Diastolic),
                 MaxHeartRate = entries.Max(e => e.HeartRate),
-                MinHeartRate = entries.Min(e => e.HeartRate)
+                MinHeartRate = entries.Min(e => e.HeartRate),
+                MaxPounds = entries.Where(e => e.Notes.Contains("lbs")).Any() ? entries.Where(e => e.Notes.Contains("lbs")).Max(e => int.Parse(e.Notes.Replace("lbs", "").Split(' ')[0])) : 0,
+                MinPounds = entries.Where(e => e.Notes.Contains("lbs")).Any() ? entries.Where(e => e.Notes.Contains("lbs")).Min(e => int.Parse(e.Notes.Replace("lbs", "").Split(' ')[0])) : 0,
+                MaxKilograms = entries.Where(e => e.Notes.Contains("kg")).Any() ? entries.Where(e => e.Notes.Contains("kg")).Max(e => double.Parse(e.Notes.Replace("kg", "").Split(' ')[1])) : 0,
+                MinKilograms = entries.Where(e => e.Notes.Contains("kg")).Any() ? entries.Where(e => e.Notes.Contains("kg")).Min(e => double.Parse(e.Notes.Replace("kg", "").Split(' ')[1])) : 0
             };
         }
 
@@ -192,5 +196,9 @@ namespace jsnover.net.blazor.Infrastructure.Services
         public int MinDiastolic { get; set; }
         public int MaxHeartRate { get; set; }
         public int MinHeartRate { get; set; }
+        public int MaxPounds { get; set; }
+        public int MinPounds { get; set; }
+        public double MaxKilograms { get; set; }
+        public double MinKilograms { get; set; }
     }
 }
