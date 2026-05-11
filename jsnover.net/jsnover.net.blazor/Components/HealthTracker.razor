@@ -1,9 +1,36 @@
 @using jsnover.net.blazor.Infrastructure.Services
 @using jsnover.net.blazor.Models
+@using jsnover.net.blazor.DataTransferObjects.HealthData
 @inject HealthTrackerService HealthTrackerService
 @inject IJSRuntime JSRuntime
 
 <div class="health-tracker-container">
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">User Data Management</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-6 mb-3">
+                    <label for="userIdInput" class="form-label">User ID</label>
+                    <input type="text" id="userIdInput" class="form-control" @bind="InputUserId" placeholder="Enter your user ID..." />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <button class="btn btn-info w-100" @onclick="LoadUserData">Load User Data</button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(CurrentUserId))
+            {
+                <div class="alert alert-success" role="alert">
+                    <strong>Current User:</strong> @CurrentUserId <span class="badge bg-secondary ms-2">@FilteredEntries.Count entries</span>
+                    <button class="btn btn-sm btn-warning float-end" @onclick="ClearUserContext">Clear User</button>
+                </div>
+            }
+        </div>
+    </div>
+
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">Health Entry Form</h5>
@@ -11,6 +38,16 @@
         <div class="card-body">
             <EditForm Model="@NewEntry" OnValidSubmit="@HandleAddEntry">
                 <DataAnnotationsValidator />
+
+                @if (string.IsNullOrWhiteSpace(CurrentUserId) && ExistingUserEntriesCount > 0)
+                {
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Note:</strong> There are already <strong>@ExistingUserEntriesCount</strong> entries for user ID "<strong>@InputUserId</strong>".
+                        <button class="btn btn-sm btn-link" @onclick="PreviewExistingData">Preview existing data</button>
+                        or
+                        <button class="btn btn-sm btn-warning" @onclick="ConfirmAndAddEntry">Continue with this user</button>
+                    </div>
+                }
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -49,7 +86,7 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">Add Entry</button>
+                    <button type="submit" class="btn btn-primary" disabled="@(string.IsNullOrWhiteSpace(CurrentUserId) && ExistingUserEntriesCount == 0 && string.IsNullOrWhiteSpace(InputUserId))">Add Entry</button>
                     <button type="button" class="btn btn-secondary" @onclick="ResetForm">Clear</button>
                 </div>
             </EditForm>
@@ -254,18 +291,67 @@
     private DateTime FilterEndDate = DateTime.Now;
     private bool IsLoading = false;
 
+    private string CurrentUserId = string.Empty;
+    private string InputUserId = string.Empty;
+    private int ExistingUserEntriesCount = 0;
+    private bool ShowPreviewModal = false;
+    private bool AwaitingUserConfirmation = false;
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadEntries();
+        ResetForm();
     }
 
-    private async Task LoadEntries()
+    private async Task LoadUserData()
     {
+        if (string.IsNullOrWhiteSpace(InputUserId))
+        {
+            await ShowMessage("Please enter a User ID", "warning");
+            return;
+        }
+
         IsLoading = true;
         try
         {
-            AllEntries = await HealthTrackerService.GetEntriesAsync();
-            AllTimeData = await HealthTrackerService.GetAllTimeDataAsync();
+            var hasEntries = await HealthTrackerService.UserHasEntriesAsync(InputUserId);
+            ExistingUserEntriesCount = await HealthTrackerService.GetUserEntryCountAsync(InputUserId);
+
+            if (hasEntries)
+            {
+                CurrentUserId = InputUserId;
+                await LoadUserEntries();
+            }
+            else
+            {
+                CurrentUserId = InputUserId;
+                AllEntries = new List<HealthEntry>();
+                FilteredEntries = new List<HealthEntry>();
+                AllTimeData = new AllTimeHealthData();
+                await ShowMessage($"No existing entries for user '{InputUserId}'. You can add new entries.", "info");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowMessage($"Error loading user data: {ex.Message}", "danger");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadUserEntries()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentUserId))
+        {
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            AllEntries = await HealthTrackerService.GetEntriesByUserAsync(CurrentUserId);
+            AllTimeData = await HealthTrackerService.GetAllTimeDataAsync(CurrentUserId);
             ApplyCurrentFilter();
         }
         finally
@@ -278,14 +364,61 @@
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(CurrentUserId) && !string.IsNullOrWhiteSpace(InputUserId))
+            {
+                // User hasn't confirmed they want to use this UserId yet
+                ExistingUserEntriesCount = await HealthTrackerService.GetUserEntryCountAsync(InputUserId);
+                if (ExistingUserEntriesCount > 0)
+                {
+                    AwaitingUserConfirmation = true;
+                    return;
+                }
+                else
+                {
+                    CurrentUserId = InputUserId;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(CurrentUserId))
+            {
+                await ShowMessage("Please load or specify a User ID first", "warning");
+                return;
+            }
+
+            NewEntry.UserId = CurrentUserId;
             await HealthTrackerService.AddEntryAsync(NewEntry);
-            await LoadEntries();
+            await LoadUserEntries();
             ResetForm();
+            await ShowMessage("Entry added successfully!", "success");
         }
         catch (Exception ex)
         {
-            // Handle error
+            await ShowMessage($"Error adding entry: {ex.Message}", "danger");
         }
+    }
+
+    private async Task ConfirmAndAddEntry()
+    {
+        CurrentUserId = InputUserId;
+        AwaitingUserConfirmation = false;
+        await HandleAddEntry();
+    }
+
+    private async Task PreviewExistingData()
+    {
+        ShowPreviewModal = true;
+        await LoadUserEntries();
+    }
+
+    private void ClearUserContext()
+    {
+        CurrentUserId = string.Empty;
+        InputUserId = string.Empty;
+        ExistingUserEntriesCount = 0;
+        AllEntries = new List<HealthEntry>();
+        FilteredEntries = new List<HealthEntry>();
+        AllTimeData = new AllTimeHealthData();
+        ResetForm();
     }
 
     private async Task EditEntry(HealthEntry entry)
@@ -293,11 +426,11 @@
         try
         {
             await HealthTrackerService.UpdateEntryAsync(entry);
-            await LoadEntries();
+            await LoadUserEntries();
         }
         catch (Exception ex)
         {
-            // Handle error
+            await ShowMessage($"Error updating entry: {ex.Message}", "danger");
         }
     }
 
@@ -308,11 +441,12 @@
             try
             {
                 await HealthTrackerService.DeleteEntryAsync(id);
-                await LoadEntries();
+                await LoadUserEntries();
+                await ShowMessage("Entry deleted successfully", "success");
             }
             catch (Exception ex)
             {
-                // Handle error
+                await ShowMessage($"Error deleting entry: {ex.Message}", "danger");
             }
         }
     }
@@ -320,6 +454,8 @@
     private void ResetForm()
     {
         NewEntry = new HealthEntry { Date = DateTime.Now };
+        ExistingUserEntriesCount = 0;
+        AwaitingUserConfirmation = false;
     }
 
     private void ApplyFilter()
@@ -337,17 +473,15 @@
     private async Task HandleExport()
     {
         var entries = await HealthTrackerService.ExportAsync();
-        // Export logic would go here (e.g., CSV download)
     }
 
     private void ShowImportModal()
     {
-        // Import modal logic would go here
     }
 
     private async Task ClearAllEntries()
     {
-        if (await ConfirmDelete("This will delete ALL health entries. Are you sure?"))
+        if (await ConfirmDelete("This will delete ALL health entries for this user. Are you sure?"))
         {
             try
             {
@@ -355,11 +489,12 @@
                 {
                     await HealthTrackerService.DeleteEntryAsync(entry.Id);
                 }
-                await LoadEntries();
+                await LoadUserEntries();
+                await ShowMessage("All entries deleted", "success");
             }
             catch (Exception ex)
             {
-                // Handle error
+                await ShowMessage($"Error clearing entries: {ex.Message}", "danger");
             }
         }
     }
@@ -374,6 +509,13 @@
         {
             return false;
         }
+    }
+
+    private async Task ShowMessage(string message, string type = "info")
+    {
+        // This would typically trigger a toast or alert in a real application
+        // For now, we'll just log to console
+        await JSRuntime.InvokeVoidAsync("console.log", $"[{type}] {message}");
     }
 
     private string GetRowClass(HealthEntry entry)

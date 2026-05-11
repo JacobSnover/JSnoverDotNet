@@ -10,5 +10,6 @@ namespace jsnover.net.blazor.Models
         public int Diastolic { get; set; } // 30-200
         public int HeartRate { get; set; } // 20-240
         public string Notes { get; set; } // Optional
+        public string UserId { get; set; }
     }
 }
