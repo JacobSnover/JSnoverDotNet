@@ -1,0 +1,550 @@
+@using jsnover.net.blazor.Infrastructure.Services
+@using jsnover.net.blazor.Models
+@using jsnover.net.blazor.DataTransferObjects.HealthData
+@inject HealthTrackerService HealthTrackerService
+@inject IJSRuntime JSRuntime
+
+<div class="health-tracker-container">
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">User Data Management</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-6 mb-3">
+                    <label for="userIdInput" class="form-label">User ID</label>
+                    <input type="text" id="userIdInput" class="form-control" @bind="InputUserId" placeholder="Enter your user ID..." />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <button class="btn btn-info w-100" @onclick="LoadUserData">Load User Data</button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(CurrentUserId))
+            {
+                <div class="alert alert-success" role="alert">
+                    <strong>Current User:</strong> @CurrentUserId <span class="badge bg-secondary ms-2">@FilteredEntries.Count entries</span>
+                    <button class="btn btn-sm btn-warning float-end" @onclick="ClearUserContext">Clear User</button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Health Entry Form</h5>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@NewEntry" OnValidSubmit="@HandleAddEntry">
+                <DataAnnotationsValidator />
+
+                @if (string.IsNullOrWhiteSpace(CurrentUserId) && ExistingUserEntriesCount > 0)
+                {
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Note:</strong> There are already <strong>@ExistingUserEntriesCount</strong> entries for user ID "<strong>@InputUserId</strong>".
+                        <button class="btn btn-sm btn-link" @onclick="PreviewExistingData">Preview existing data</button>
+                        or
+                        <button class="btn btn-sm btn-warning" @onclick="ConfirmAndAddEntry">Continue with this user</button>
+                    </div>
+                }
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="entryDate" class="form-label">Date</label>
+                        <InputDate id="entryDate" class="form-control" @bind-Value="NewEntry.Date" />
+                        <ValidationMessage For="@(() => NewEntry.Date)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="heartRate" class="form-label">Heart Rate (bpm)</label>
+                        <InputNumber id="heartRate" class="form-control" @bind-Value="NewEntry.HeartRate" />
+                        <ValidationMessage For="@(() => NewEntry.HeartRate)" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="systolic" class="form-label">Systolic (mmHg)</label>
+                        <InputNumber id="systolic" class="form-control" @bind-Value="NewEntry.Systolic" />
+                        <ValidationMessage For="@(() => NewEntry.Systolic)" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="diastolic" class="form-label">Diastolic (mmHg)</label>
+                        <InputNumber id="diastolic" class="form-control" @bind-Value="NewEntry.Diastolic" />
+                        <ValidationMessage For="@(() => NewEntry.Diastolic)" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="notes" class="form-label">Notes - Optional</label>
+                        <InputText id="notes" class="form-control" @bind-Value="NewEntry.Notes" placeholder="Any additional notes..." />
+                        <ValidationMessage For="@(() => NewEntry.Notes)" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" disabled="@(string.IsNullOrWhiteSpace(CurrentUserId) && ExistingUserEntriesCount == 0 && string.IsNullOrWhiteSpace(InputUserId))">Add Entry</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ResetForm">Clear</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Filters & Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" id="startDate" class="form-control" @bind="FilterStartDate" />
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" id="endDate" class="form-control" @bind="FilterEndDate" />
+                </div>
+
+                <div class="col-md-4 mb-3 d-flex align-items-end">
+                    <button class="btn btn-info w-100" @onclick="ApplyFilter">Apply Filter</button>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                @* <button class="btn btn-success" @onclick="HandleExport">Export Data</button>
+                <button class="btn btn-warning" @onclick="ShowImportModal">Import Data</button> *@
+                @* <button class="btn btn-danger" @onclick="ClearAllEntries">Clear All Entries</button> *@
+            </div>
+        </div>
+    </div>
+
+    @if (AllTimeData != null)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Health Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Entries</div>
+                            <div class="stat-value">@AllTimeData.TotalEntries</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Avg Blood Pressure</div>
+                            <div class="stat-value">@AllTimeData.AvgSystolic/@AllTimeData.AvgDiastolic</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Avg Heart Rate</div>
+                            <div class="stat-value">@AllTimeData.AvgHeartRate bpm</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Min/Max lbs</div>
+                            <div class="stat-value">@AllTimeData.MinPounds / @AllTimeData.MaxPounds</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Min/Max Systolic</div>
+                            <div class="stat-value">@AllTimeData.MinSystolic / @AllTimeData.MaxSystolic</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Min/Max Diastolic</div>
+                            <div class="stat-value">@AllTimeData.MinDiastolic / @AllTimeData.MaxDiastolic</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Min/Max Heart Rate</div>
+                            <div class="stat-value">@AllTimeData.MinHeartRate / @AllTimeData.MaxHeartRate</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="stat-box">
+                            <div class="stat-label">Min/Max kg</div>
+                            <div class="stat-value">@AllTimeData.MinKilograms / @AllTimeData.MaxKilograms</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Health Entries (@FilteredEntries.Count)</h5>
+        </div>
+        <div class="card-body">
+            @if (FilteredEntries.Count == 0)
+            {
+                <p class="text-muted">No entries found. Start by adding a new entry above.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Date</th>
+                                <th>Systolic</th>
+                                <th>Diastolic</th>
+                                <th>Heart Rate</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in FilteredEntries)
+                            {
+                                <tr class="@GetRowClass(entry)">
+                                    <td>@entry.Date.ToString("MM/dd/yyyy")</td>
+                                    <td class="@GetSystolicClass(entry.Systolic)">@entry.Systolic</td>
+                                    <td class="@GetDiastolicClass(entry.Diastolic)">@entry.Diastolic</td>
+                                    <td class="@GetHeartRateClass(entry.HeartRate)">@entry.HeartRate</td>
+                                    <td>@entry.Notes</td>
+                                   @*  <td>
+                                        <button class="btn btn-sm btn-warning" @onclick="@(() => EditEntry(entry))">Edit</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="@(() => DeleteEntry(entry.Id))">Delete</button>
+                                    </td> *@
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .health-tracker-container {
+        padding: 20px 0;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #495057;
+        margin-top: 5px;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    .bg-high-bp {
+        background-color: #ffe6e6;
+    }
+
+    .text-high-bp {
+        color: #c00;
+        font-weight: bold;
+    }
+
+    .text-low-hr {
+        color: #ff9800;
+        font-weight: bold;
+    }
+
+    .text-high-hr {
+        color: #c00;
+        font-weight: bold;
+    }
+</style>
+
+@code {
+    private HealthEntry NewEntry = new();
+    private List<HealthEntry> AllEntries = new();
+    private List<HealthEntry> FilteredEntries = new();
+    private AllTimeHealthData AllTimeData = new();
+    private DateTime FilterStartDate = DateTime.Now.AddMonths(-3);
+    private DateTime FilterEndDate = DateTime.Now;
+    private bool IsLoading = false;
+
+    private string CurrentUserId = string.Empty;
+    private string InputUserId = string.Empty;
+    private int ExistingUserEntriesCount = 0;
+    private bool ShowPreviewModal = false;
+    private bool AwaitingUserConfirmation = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ResetForm();
+    }
+
+    private async Task LoadUserData()
+    {
+        if (string.IsNullOrWhiteSpace(InputUserId))
+        {
+            await ShowMessage("Please enter a User ID", "warning");
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            var hasEntries = await HealthTrackerService.UserHasEntriesAsync(InputUserId);
+            ExistingUserEntriesCount = await HealthTrackerService.GetUserEntryCountAsync(InputUserId);
+
+            if (hasEntries)
+            {
+                CurrentUserId = InputUserId;
+                await LoadUserEntries();
+            }
+            else
+            {
+                CurrentUserId = InputUserId;
+                AllEntries = new List<HealthEntry>();
+                FilteredEntries = new List<HealthEntry>();
+                AllTimeData = new AllTimeHealthData();
+                await ShowMessage($"No existing entries for user '{InputUserId}'. You can add new entries.", "info");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowMessage($"Error loading user data: {ex.Message}", "danger");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadUserEntries()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentUserId))
+        {
+            return;
+        }
+
+        IsLoading = true;
+        try
+        {
+            AllEntries = await HealthTrackerService.GetEntriesByUserAsync(CurrentUserId);
+            AllTimeData = await HealthTrackerService.GetAllTimeDataAsync(CurrentUserId);
+            ApplyCurrentFilter();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task HandleAddEntry()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(CurrentUserId) && !string.IsNullOrWhiteSpace(InputUserId))
+            {
+                // User hasn't confirmed they want to use this UserId yet
+                ExistingUserEntriesCount = await HealthTrackerService.GetUserEntryCountAsync(InputUserId);
+                if (ExistingUserEntriesCount > 0)
+                {
+                    AwaitingUserConfirmation = true;
+                    return;
+                }
+                else
+                {
+                    CurrentUserId = InputUserId;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(CurrentUserId))
+            {
+                await ShowMessage("Please load or specify a User ID first", "warning");
+                return;
+            }
+
+            NewEntry.UserId = CurrentUserId;
+            await HealthTrackerService.AddEntryAsync(NewEntry);
+            await LoadUserEntries();
+            ResetForm();
+            await ShowMessage("Entry added successfully!", "success");
+        }
+        catch (Exception ex)
+        {
+            await ShowMessage($"Error adding entry: {ex.Message}", "danger");
+        }
+    }
+
+    private async Task ConfirmAndAddEntry()
+    {
+        CurrentUserId = InputUserId;
+        AwaitingUserConfirmation = false;
+        await HandleAddEntry();
+    }
+
+    private async Task PreviewExistingData()
+    {
+        ShowPreviewModal = true;
+        await LoadUserEntries();
+    }
+
+    private void ClearUserContext()
+    {
+        CurrentUserId = string.Empty;
+        InputUserId = string.Empty;
+        ExistingUserEntriesCount = 0;
+        AllEntries = new List<HealthEntry>();
+        FilteredEntries = new List<HealthEntry>();
+        AllTimeData = new AllTimeHealthData();
+        ResetForm();
+    }
+
+    private async Task EditEntry(HealthEntry entry)
+    {
+        try
+        {
+            await HealthTrackerService.UpdateEntryAsync(entry);
+            await LoadUserEntries();
+        }
+        catch (Exception ex)
+        {
+            await ShowMessage($"Error updating entry: {ex.Message}", "danger");
+        }
+    }
+
+    private async Task DeleteEntry(int id)
+    {
+        if (await ConfirmDelete())
+        {
+            try
+            {
+                await HealthTrackerService.DeleteEntryAsync(id);
+                await LoadUserEntries();
+                await ShowMessage("Entry deleted successfully", "success");
+            }
+            catch (Exception ex)
+            {
+                await ShowMessage($"Error deleting entry: {ex.Message}", "danger");
+            }
+        }
+    }
+
+    private void ResetForm()
+    {
+        NewEntry = new HealthEntry { Date = DateTime.Now };
+        ExistingUserEntriesCount = 0;
+        AwaitingUserConfirmation = false;
+    }
+
+    private void ApplyFilter()
+    {
+        ApplyCurrentFilter();
+    }
+
+    private void ApplyCurrentFilter()
+    {
+        FilteredEntries = AllEntries
+            .Where(e => e.Date.Date >= FilterStartDate.Date && e.Date.Date <= FilterEndDate.Date)
+            .ToList();
+    }
+
+    private async Task HandleExport()
+    {
+        var entries = await HealthTrackerService.ExportAsync();
+    }
+
+    private void ShowImportModal()
+    {
+    }
+
+    private async Task ClearAllEntries()
+    {
+        if (await ConfirmDelete("This will delete ALL health entries for this user. Are you sure?"))
+        {
+            try
+            {
+                foreach (var entry in AllEntries)
+                {
+                    await HealthTrackerService.DeleteEntryAsync(entry.Id);
+                }
+                await LoadUserEntries();
+                await ShowMessage("All entries deleted", "success");
+            }
+            catch (Exception ex)
+            {
+                await ShowMessage($"Error clearing entries: {ex.Message}", "danger");
+            }
+        }
+    }
+
+    private async Task<bool> ConfirmDelete(string message = "Are you sure you want to delete this entry?")
+    {
+        try
+        {
+            return await JSRuntime.InvokeAsync<bool>("confirm", message);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task ShowMessage(string message, string type = "info")
+    {
+        // This would typically trigger a toast or alert in a real application
+        // For now, we'll just log to console
+        await JSRuntime.InvokeVoidAsync("console.log", $"[{type}] {message}");
+    }
+
+    private string GetRowClass(HealthEntry entry)
+    {
+        if (entry.Systolic >= 130 || entry.Diastolic >= 80)
+            return "bg-high-bp";
+        return string.Empty;
+    }
+
+    private string GetSystolicClass(int systolic)
+    {
+        if (systolic >= 130)
+            return "text-high-bp";
+        return string.Empty;
+    }
+
+    private string GetDiastolicClass(int diastolic)
+    {
+        if (diastolic >= 80)
+            return "text-high-bp";
+        return string.Empty;
+    }
+
+    private string GetHeartRateClass(int heartRate)
+    {
+        if (heartRate < 60)
+            return "text-low-hr";
+        if (heartRate > 100)
+            return "text-high-hr";
+        return string.Empty;
+    }
+}

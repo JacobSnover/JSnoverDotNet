@@ -27,6 +27,7 @@ namespace jsnover.net.blazor.Models
         public virtual DbSet<Blog> Blog { get; set; }
         public virtual DbSet<Commentors> Commentors { get; set; }
         public virtual DbSet<ContactRequest> ContactRequest { get; set; }
+        public virtual DbSet<HealthEntry> HealthEntry { get; set; }
         public virtual DbSet<Owners> Owners { get; set; }
         public virtual DbSet<Photos> Photos { get; set; }
         public virtual DbSet<Subscribers> Subscribers { get; set; }
@@ -198,6 +199,25 @@ namespace jsnover.net.blazor.Models
                     .HasMaxLength(256);
 
                 entity.Property(e => e.UserName).HasMaxLength(50);
+            });
+
+            modelBuilder.Entity<HealthEntry>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Date).HasColumnType("datetime2");
+
+                entity.Property(e => e.Systolic)
+                    .IsRequired();
+
+                entity.Property(e => e.Diastolic)
+                    .IsRequired();
+
+                entity.Property(e => e.HeartRate)
+                    .IsRequired();
+
+                entity.Property(e => e.Notes)
+                    .HasMaxLength(1000);
             });
 
             modelBuilder.Entity<Owners>(entity =>

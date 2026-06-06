@@ -10,6 +10,7 @@ using jsnover.net.blazor.Areas.Identity;
 using jsnover.net.blazor.Data;
 using jsnover.net.blazor.Infrastructure.Services;
 using jsnover.net.blazor.DataTransferObjects.Common;
+using jsnover.net.blazor.Models;
 using Blazored.SessionStorage;
 using jsnover.net.blazor.DataTransferObjects.BlogModels;
 using jsnover.net.blazor.Models;
@@ -46,6 +47,7 @@ namespace jsnover.net.blazor
             services.AddScoped<BlogService>();
             services.AddScoped<BlogViewModel>();
             services.AddScoped<CardService>();
+            services.AddScoped<HealthTrackerService>();
             services.AddBlazoredSessionStorage();
             services.AddControllersWithViews();
             services.AddHttpClient();

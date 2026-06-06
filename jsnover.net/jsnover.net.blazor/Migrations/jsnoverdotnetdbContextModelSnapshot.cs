@@ -345,6 +345,38 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("ContactRequest");
                 });
 
+<<<<<<< HEAD
+=======
+            modelBuilder.Entity("jsnover.net.blazor.Models.HealthEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Diastolic")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HeartRate")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Systolic")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("HealthEntry");
+                });
+
+>>>>>>> master
             modelBuilder.Entity("jsnover.net.blazor.Models.Owners", b =>
                 {
                     b.Property<int>("Id")
@@ -368,6 +400,7 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("Owners");
                 });
 
+<<<<<<< HEAD
             modelBuilder.Entity("jsnover.net.blazor.Models.PhotoComment", b =>
                 {
                     b.Property<int>("CommentId")
@@ -459,6 +492,8 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("PhotoReaction");
                 });
 
+=======
+>>>>>>> master
             modelBuilder.Entity("jsnover.net.blazor.Models.Photos", b =>
                 {
                     b.Property<int>("Id")
@@ -482,6 +517,7 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("Photos");
                 });
 
+<<<<<<< HEAD
             modelBuilder.Entity("jsnover.net.blazor.Models.RateLimitLog", b =>
                 {
                     b.Property<int>("LogId")
@@ -565,6 +601,8 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("StandalonePhoto");
                 });
 
+=======
+>>>>>>> master
             modelBuilder.Entity("jsnover.net.blazor.Models.Subscribers", b =>
                 {
                     b.Property<int>("Id")
@@ -708,6 +746,7 @@ namespace jsnover.net.blazor.Migrations
                     b.Navigation("Blog");
                 });
 
+<<<<<<< HEAD
             modelBuilder.Entity("jsnover.net.blazor.Models.PhotoComment", b =>
                 {
                     b.HasOne("jsnover.net.blazor.Models.Blog", "Blog")
@@ -739,6 +778,8 @@ namespace jsnover.net.blazor.Migrations
                     b.Navigation("Photo");
                 });
 
+=======
+>>>>>>> master
             modelBuilder.Entity("jsnover.net.blazor.Models.Photos", b =>
                 {
                     b.HasOne("jsnover.net.blazor.Models.Blog", "Blog")
@@ -787,6 +828,7 @@ namespace jsnover.net.blazor.Migrations
 
                     b.Navigation("Tag");
                 });
+<<<<<<< HEAD
 
             modelBuilder.Entity("jsnover.net.blazor.Models.StandalonePhoto", b =>
                 {
@@ -794,6 +836,8 @@ namespace jsnover.net.blazor.Migrations
 
                     b.Navigation("Reactions");
                 });
+=======
+>>>>>>> master
 #pragma warning restore 612, 618
         }
     }
