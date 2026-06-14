@@ -2,6 +2,7 @@
 
 @using jsnover.net.blazor.Infrastructure.Services
 @using jsnover.net.blazor.Models
+@using jsnover.net.blazor.Components
 @using Microsoft.AspNetCore.Components.Web
 
 @inject PhotoGalleryService PhotoGalleryService
@@ -25,30 +26,10 @@
         
         <!-- Copyright and rights notice -->
         <meta name="copyright" content="Copyright (c) 2024 jsnover.net. All rights reserved." />
-        <meta name="author" content="Randy Snover" />
+        <meta name="author" content="Jacob Snover" />
     </HeadContent>
 
-    <!-- Hero / Carousel Section -->
-    <section class="hero-section">
-        <div class="container-fluid">
-            @if (carouselPhotos?.Count > 0)
-            {
-                <PhotoCarousel Photos="carouselPhotos" OnPhotoSelected="HandlePhotoSelected" />
-            }
-            else if (isLoadingCarousel)
-            {
-                <div class="carousel-loading">
-                    <p>Loading carousel...</p>
-                </div>
-            }
-            else
-            {
-                <div class="carousel-empty">
-                    <p>No carousel photos available.</p>
-                </div>
-            }
-        </div>
-    </section>
+    <!-- Hero section removed: gallery-only UX -->
 
     <!-- Filter Tabs Section -->
     <section class="filter-section">
@@ -130,40 +111,22 @@
 </div>
 
 @code {
-    private List<StandalonePhoto> carouselPhotos;
     private List<StandalonePhoto> galleryPhotos;
-    private StandalonePhoto selectedPhoto;
-    
-    private bool isLoadingCarousel = true;
+    private StandalonePhoto selectedPhoto = new StandalonePhoto
+    {
+        Url = @"https://dl.dropboxusercontent.com/scl/fi/0kydwes69vy01c4wxlj7b/20260118_215952.jpg?rlkey=6zig5d4fhff35kelzv1q6juq3&st=e1p2b82x&dl=0",
+        ThumbnailUrl = @"https://dl.dropboxusercontent.com/scl/fi/0kydwes69vy01c4wxlj7b/20260118_215952.jpg?rlkey=6zig5d4fhff35kelzv1q6juq3&st=e1p2b82x&dl=0"
+    };
     private bool isLoadingGallery = true;
     private bool showPhotoDetail = false;
-    
+
     private string currentFilter = "all";
     private int currentPage = 1;
     private const int pageSize = 20;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCarouselPhotos();
         await LoadGalleryPhotos();
-    }
-
-    private async Task LoadCarouselPhotos()
-    {
-        isLoadingCarousel = true;
-        try
-        {
-            carouselPhotos = await PhotoGalleryService.GetCarouselPhotos(5);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading carousel: {ex.Message}");
-            carouselPhotos = new List<StandalonePhoto>();
-        }
-        finally
-        {
-            isLoadingCarousel = false;
-        }
     }
 
     private async Task LoadGalleryPhotos()
@@ -172,7 +135,11 @@
         currentPage = 1;
         try
         {
-            galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter, currentPage, pageSize);
+            // galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter, currentPage, pageSize);
+            galleryPhotos = new List<StandalonePhoto>
+            {
+                selectedPhoto
+            };
         }
         catch (Exception ex)
         {
@@ -193,12 +160,7 @@
 
     private void HandlePhotoSelected(int photoId)
     {
-        var photo = carouselPhotos?.FirstOrDefault(p => p.PhotoId == photoId);
-        if (photo != null)
-        {
-            selectedPhoto = photo;
-            showPhotoDetail = true;
-        }
+        // Carousel removed; this handler is no longer used.
     }
 
     private void HandlePhotoClicked(StandalonePhoto photo)
