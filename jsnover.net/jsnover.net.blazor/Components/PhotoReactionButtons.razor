@@ -1,0 +1,172 @@
+@using Blazored.SessionStorage
+@using jsnover.net.blazor.Models
+@using jsnover.net.blazor.Infrastructure.SqlRepo
+
+<div class="photo-reaction-buttons">
+    <div class="reactions-container">
+        @foreach (var reaction in reactionEmojis)
+        {
+            var isUserReacted = userReactions.Contains(reaction.Key);
+            <button 
+                class="reaction-btn @(isUserReacted ? "reacted" : "")"
+                @onclick="@(() => HandleReaction(reaction.Key))"
+                disabled="@(isUserReacted || isProcessing)"
+                title="@(isUserReacted ? "You reacted with this emoji" : $"React with {reaction.Value}")"
+                data-emoji="@reaction.Value">
+                <span class="emoji">@reaction.Value</span>
+                <span class="reaction-count">@GetReactionCount(reaction.Key)</span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int PhotoId { get; set; }
+
+    [Inject]
+    private ISessionStorageService SessionStorage { get; set; }
+
+    private Dictionary<string, string> reactionEmojis = new()
+    {
+        { "thumbs_up", "👍" },
+        { "heart", "❤️" },
+        { "laugh", "😂" },
+        { "surprise", "😮" },
+        { "sad", "😢" }
+    };
+
+    private Dictionary<string, int> reactionCounts = new();
+    private HashSet<string> userReactions = new();
+    private bool isProcessing = false;
+    private DateTime lastClickTime = DateTime.MinValue;
+    private const int DebounceMs = 500;
+    private string sessionId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sessionId = await SessionStorage.GetItemAsStringAsync("sessionId");
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            sessionId = Guid.NewGuid().ToString();
+            await SessionStorage.SetItemAsStringAsync("sessionId", sessionId);
+        }
+
+        await LoadReactions();
+        await LoadUserReactions();
+    }
+
+    private async Task LoadReactions()
+    {
+        try
+        {
+            // Initialize reaction counts
+            foreach (var emoji in reactionEmojis)
+            {
+                reactionCounts[emoji.Key] = 0;
+            }
+
+            // Load actual counts from database if available
+            // This would normally come from a service method
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading reactions: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUserReactions()
+    {
+        try
+        {
+            var userReactionKey = $"photo_{PhotoId}_reactions";
+            var storedReactions = await SessionStorage.GetItemAsStringAsync(userReactionKey);
+            
+            if (!string.IsNullOrEmpty(storedReactions))
+            {
+                userReactions = storedReactions.Split(',').ToHashSet();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading user reactions: {ex.Message}");
+        }
+    }
+
+    private async Task HandleReaction(string reactionType)
+    {
+        // Debounce: prevent multiple clicks within 500ms
+        var now = DateTime.UtcNow;
+        if ((now - lastClickTime).TotalMilliseconds < DebounceMs)
+        {
+            return;
+        }
+        lastClickTime = now;
+
+        // Prevent duplicate reactions
+        if (userReactions.Contains(reactionType))
+        {
+            return;
+        }
+
+        isProcessing = true;
+        try
+        {
+            var reaction = new PhotoReaction
+            {
+                PhotoId = PhotoId,
+                ReactionType = reactionType,
+                SessionId = sessionId,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            // Save reaction to database
+            await SaveReactionAsync(reaction);
+
+            // Update local state
+            userReactions.Add(reactionType);
+            if (reactionCounts.ContainsKey(reactionType))
+            {
+                reactionCounts[reactionType]++;
+            }
+            else
+            {
+                reactionCounts[reactionType] = 1;
+            }
+
+            // Save user reactions to session storage
+            var userReactionKey = $"photo_{PhotoId}_reactions";
+            await SessionStorage.SetItemAsStringAsync(userReactionKey, string.Join(",", userReactions));
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding reaction: {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task SaveReactionAsync(PhotoReaction reaction)
+    {
+        try
+        {
+            // TODO: Add method to save reactions
+            // For now, we'll use a placeholder that can be implemented later
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving reaction: {ex.Message}");
+        }
+    }
+
+    private int GetReactionCount(string reactionType)
+    {
+        return reactionCounts.ContainsKey(reactionType) ? reactionCounts[reactionType] : 0;
+    }
+}

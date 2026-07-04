@@ -13,6 +13,7 @@ using jsnover.net.blazor.DataTransferObjects.Common;
 using jsnover.net.blazor.Models;
 using Blazored.SessionStorage;
 using jsnover.net.blazor.DataTransferObjects.BlogModels;
+using jsnover.net.blazor.Models;
 
 namespace jsnover.net.blazor
 {
@@ -31,11 +32,9 @@ namespace jsnover.net.blazor
         {
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(
-                    Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             services.AddDbContext<jsnoverdotnetdbContext>(options =>
-                options.UseSqlServer(
-                    Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             ContextOptions.connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
@@ -49,6 +48,8 @@ namespace jsnover.net.blazor
             services.AddScoped<BlogViewModel>();
             services.AddScoped<CardService>();
             services.AddScoped<HealthTrackerService>();
+            services.AddScoped<PhotoGalleryService>();
+            services.AddScoped<PhotoAccessService>();
             services.AddBlazoredSessionStorage();
             services.AddControllersWithViews();
             services.AddHttpClient();

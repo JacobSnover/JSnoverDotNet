@@ -1,0 +1,252 @@
+# Card Games (Solitaire & Black Jack) - Copilot Instructions
+
+## Two Games Implemented
+
+### 1. Solitaire (Klondike)
+
+**Game Logic:** `GameLogic/SolitaireGameState.cs` (249 lines)
+
+**Core Operations:**
+- **Draw from Stock:** Move card from Stock to Waste (3-card or 1-card draw mode)
+- **Move Tableau to Tableau:** Drag column of cards to another tableau if valid (descending rank, alternating color)
+- **Move Tableau to Foundation:** Auto-move card if it's the next rank in suit
+- **Move Foundation back to Tableau:** Undo invalid moves
+- **Detect Win:** All cards in foundations = game won
+
+**State Validation:**
+- No moving face-down cards
+- Tableau columns must have valid rank sequences (K→Q→J→10→...→A)
+- Foundation stacks must go Ace→King in same suit
+- Waste cards can only go to Tableau or Foundation
+
+### 2. Black Jack
+
+**Game Type:** Simplified dealer vs. player variant
+
+**Rules:**
+- Player starts with 2 cards
+- Dealer starts with 1 face-up, 1 face-down
+- Player can Hit (draw), Stand, or Bust (>21)
+- Dealer must hit on 17 or below
+- Winner: Closest to 21 without busting
+- Blackjack: Ace + 10-value = 21 with 2 cards = auto-win
+
+**Implementation:** Likely in `Pages/Games/BlackJack.razor` or `Components/BlackJackBoard.razor`
+
+**Current Status:** Game logic may be partially in component code-behind; consider refactoring to dedicated service
+
+## CardService (Session Management)
+
+**Location:** `Infrastructure/Services/CardService.cs`
+
+### Key Responsibilities
+
+1. **Deck Initialization:** Call external `deckofcardsapi.com` to get shuffled card data
+2. **Session Storage:** Persist game state in `Blazored.SessionStorage`
+3. **Game State Management:** Load/save game state across page reloads
+4. **Card Data Model:** Map API response to `Card` model
+
+### External API Integration (deckofcardsapi.com)
+
+**Free API Endpoint:** `https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1`
+
+**Response Model:**
+```json
+{
+    "success": true,
+    "deck_id": "3p40pgl6x0so",
+    "shuffled": true,
+    "remaining": 52
+}
+```
+
+### Known Issues & Resilience
+
+**Anti-Pattern ⚠️:** No retry logic or error handling for API failures
+- If `deckofcardsapi.com` is down, game initialization fails
+- No circuit breaker; repeated failures spike API calls
+
+**Improvement Opportunities:**
+
+1. **Fallback Deck:** Generate local deck if API fails
+   ```csharp
+   private List<Card> GenerateLocalDeck() {
+       var suits = new[] { "SPADES", "HEARTS", "DIAMONDS", "CLUBS" };
+       var values = new[] { "ACE", "2", "3", // ... "KING" };
+       // Generate all 52 cards locally
+   }
+   ```
+
+2. **Retry Policy (Polly):** Add NuGet `Polly` and implement retries
+   ```csharp
+   var retryPolicy = Policy<HttpResponseMessage>
+       .Handle<HttpRequestException>()
+       .Or<TaskCanceledException>()
+       .OrResult(r => !r.IsSuccessStatusCode)
+       .WaitAndRetryAsync(retryCount: 3, sleepDurationProvider: ...);
+   
+   var response = await retryPolicy.ExecuteAsync(() => httpClient.GetAsync(...));
+   ```
+
+3. **Caching:** Cache deck initialization for same session
+   ```csharp
+   private static readonly Dictionary<string, NewDeck> _deckCache = new();
+   ```
+
+### Gotchas & Best Practices
+
+1. **Key Naming:** Use consistent string keys across components
+   ```csharp
+   private const string SOLITAIRE_GAME_KEY = "game_solitaire";
+   private const string BLACKJACK_GAME_KEY = "game_blackjack";
+   ```
+
+2. **Null Checks:** `GetItemAsync<T>()` returns `null` if key doesn't exist
+   ```csharp
+   var game = await sessionStorage.GetItemAsync<SolitaireGameState>(key);
+   if (game == null) {
+       // Initialize new game
+   }
+   ```
+
+3. **Serialization:** Objects must be JSON-serializable; avoid circular references
+   ```csharp
+   // ✅ Good: Clean model with [Serializable] or JsonPropertyName
+   public class GameState {
+       [JsonPropertyName("game_id")]
+       public string GameId { get; set; }
+   }
+   
+   // ❌ Bad: Circular references break serialization
+   public class Card {
+       public GameState Game { get; set; }  // Avoid back-references
+   }
+   ```
+
+4. **Performance:** SessionStorage is synchronous on main thread; large objects (>1MB) may cause lag
+   ```csharp
+   // Consider pagination if storing large game histories
+   var recentGames = games.OrderByDescending(g => g.PlayDate).Take(5).ToList();
+   ```
+
+### Current Testing Gaps
+
+| Gap | Solution |
+|-----|----------|
+| **No SolitaireGameState tests** | Implement `SolitaireGameStateTests.cs` |
+| **No CardComparer tests** | Add unit tests for move validation |
+| **No CardService tests** | Mock HttpClient, test API integration and session storage |
+| **No Black Jack logic tests** | Implement `BlackJackGameStateTests.cs` |
+| **No component tests** | Consider Blaz
+or component testing library (bunit) |
+
+## Performance & Optimization
+
+### Current Performance
+
+- **Deck Initialization:** ~100-200ms (network call to `deckofcardsapi.com`)
+- **Game State Serialization:** ~5-10ms (52 cards → JSON)
+- **Session Storage Write:** ~2-5ms (browser I/O)
+
+### Optimization Opportunities
+
+1. **Parallel Card Draining:** Draw multiple cards at once instead of one per request
+   ```csharp
+   // Instead of: await cardService.DrawCard()
+   // Use: await cardService.DrawCardsAsync(count: 10)
+   ```
+
+2. **Local Deck Generation Fallback:** Avoid API dependency entirely
+   ```csharp
+   // If deckofcardsapi.com unavailable, generate locally
+   ```
+
+3. **Game State Compression:** Store only delta changes instead of full state
+   ```csharp
+   // Instead of: Each save = full 52-card state
+   // Use: Save only moves made, reconstruct state on load
+   ```
+
+4. **Image Caching:** Card images from API; consider pre-caching
+   ```html
+   <!-- Preload card images -->
+   <link rel="prefetch" href="..." />
+   ```
+
+## Gotchas & Best Practices
+
+1. **SessionStorage Key Naming:** Use immutable string literals, not dynamic keys
+   ```csharp
+   // ✅ Good
+   private const string KEY = "game_solitaire";
+   
+   // ❌ Bad
+   var key = $"game_{GameType}";  // Different key per GameType = lost state
+   ```
+
+2. **Async Initialization:** Always await `OnInitializedAsync()` before accessing state
+   ```csharp
+   // ❌ Bad: Accessing uninitialized gameState
+   protected override Task OnInitializedAsync() { // Missing await
+       gameState = await sessionStorage.GetItemAsync(...);
+   }
+   
+   // ✅ Good
+   protected override async Task OnInitializedAsync() {
+       gameState = await sessionStorage.GetItemAsync(...);
+   }
+   ```
+
+3. **Card Identity:** Use `Card.Code` (unique) for move validation, not just rank/suit
+   ```csharp
+   // Two Aces of Spades can exist if shuffled from different decks
+   // Use "AS" code, not just "ACE" + "SPADES"
+   ```
+
+4. **Cascading State Changes:** When moving a card, update all affected lists atomically
+   ```csharp
+   // ✅ Good: Atomic update
+   gameState.Tableau[from].RemoveAt(index);
+   gameState.Tableau[to].Add(card);
+   
+   // ❌ Bad: Partial update if exception between
+   gameState.Tableau[from].RemoveAt(index);
+   // ... exception here leaves game in inconsistent state
+   gameState.Tableau[to].Add(card);
+   ```
+
+5. **API Resilience:** Never assume `deckofcardsapi.com` is always available
+   ```csharp
+   // Always have a fallback
+   try {
+       return await InitializeFromApiAsync();
+   } catch (HttpRequestException) {
+       return GenerateLocalDeck();
+   }
+   ```
+
+## Architecture Decision Records (ADRs)
+
+### ADR-001: External API for Card Shuffling
+
+**Decision:** Use free `deckofcardsapi.com` for deck initialization
+**Rationale:** Guaranteed randomness; reduces client-side implementation
+**Trade-off:** Network dependency; API downtime blocks game start
+**Status:** Active
+**Future:** Consider local shuffle fallback
+
+### ADR-002: SessionStorage for Game State
+
+**Decision:** Persist game state in `Blazored.SessionStorage` (browser session)
+**Rationale:** No server storage required; privacy-respecting; works offline
+**Trade-off:** Cleared when browser closed; no game history between sessions
+**Status:** Active
+**Alternative:** Save to database for persistence across sessions
+
+### ADR-003: Component-Driven Game Logic
+
+**Decision:** Game logic (rules, validation) in dedicated components/utilities, not in Page files
+**Rationale:** Testable; reusable for multiple game implementations
+**Status:** In-progress
+**Notes:** `CardComparer` utility demonstrates pattern; Black Jack logic should follow
+

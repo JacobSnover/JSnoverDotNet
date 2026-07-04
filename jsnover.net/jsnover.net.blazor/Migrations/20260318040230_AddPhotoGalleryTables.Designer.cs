@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using jsnover.net.blazor.Models;
 
@@ -11,9 +12,11 @@ using jsnover.net.blazor.Models;
 namespace jsnover.net.blazor.Migrations
 {
     [DbContext(typeof(jsnoverdotnetdbContext))]
-    partial class jsnoverdotnetdbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318040230_AddPhotoGalleryTables")]
+    partial class AddPhotoGalleryTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -343,35 +346,6 @@ namespace jsnover.net.blazor.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ContactRequest");
-                });
-
-            modelBuilder.Entity("jsnover.net.blazor.Models.HealthEntry", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Diastolic")
-                        .HasColumnType("int");
-
-                    b.Property<int>("HeartRate")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("Systolic")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("HealthEntry");
                 });
 
             modelBuilder.Entity("jsnover.net.blazor.Models.Owners", b =>
@@ -817,14 +791,12 @@ namespace jsnover.net.blazor.Migrations
                     b.Navigation("Tag");
                 });
 
-
             modelBuilder.Entity("jsnover.net.blazor.Models.StandalonePhoto", b =>
                 {
                     b.Navigation("Comments");
 
                     b.Navigation("Reactions");
                 });
-
 #pragma warning restore 612, 618
         }
     }

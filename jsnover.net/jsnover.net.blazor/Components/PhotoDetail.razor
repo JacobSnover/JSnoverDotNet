@@ -1,0 +1,70 @@
+@using jsnover.net.blazor.Models
+
+<div class="photodetail">
+    <div class="detail-header">
+        <h2 class="detail-title">@Photo?.Title</h2>
+        <button class="btn-close" @onclick="OnClose" aria-label="Close photo detail">
+            ✕
+        </button>
+    </div>
+
+    @if (Photo != null)
+    {
+        <div class="detail-content">
+            <!-- Main Photo -->
+            <div class="detail-photo-wrapper">
+                <img 
+                    src="@Photo.Url" 
+                    alt="@Photo.Title"
+                    loading="lazy"
+                    class="detail-photo" />
+            </div>
+
+            <!-- Photo Info -->
+            <div class="detail-info">
+                <div class="info-section">
+                    <h3>Description</h3>
+                    <p class="description">@Photo.Description</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Photo.Tags))
+                {
+                    <div class="info-section">
+                        <h3>Tags</h3>
+                        <div class="tags">
+                            @foreach (var tag in Photo.Tags.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrEmpty(t)))
+                            {
+                                <span class="tag">@tag</span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="info-section">
+                    <h3>Uploaded</h3>
+                    <p class="upload-date">@Photo.UploadDate.ToString("MMMM d, yyyy")</p>
+                </div>
+            </div>
+
+            <!-- Reactions Section -->
+            <div class="detail-section reactions-section">
+                <h3>Reactions</h3>
+                <PhotoReactionButtons PhotoId="@Photo.PhotoId" />
+            </div>
+
+            <!-- Comments Section -->
+            <div class="detail-section comments-section">
+                <h3>Comments</h3>
+                <PhotoCommentSection PhotoId="@Photo.PhotoId" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public StandalonePhoto Photo { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+}

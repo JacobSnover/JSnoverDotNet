@@ -1,0 +1,195 @@
+@using jsnover.net.blazor.Infrastructure.Services
+
+@if (IsVisible)
+{
+    <div class="captcha-overlay" @onclick="HandleOverlayClick">
+        <div class="captcha-modal" @onclick:stopPropagation>
+            <div class="captcha-header">
+                <h3>Security Verification</h3>
+                <button class="captcha-close" @onclick="HandleClose" aria-label="Close">✕</button>
+            </div>
+
+            <div class="captcha-content">
+                <p class="captcha-message">
+                    Please solve this math problem to continue:
+                </p>
+
+                <div class="captcha-problem">
+                    <span class="problem-text">@captchaProblem</span>
+                </div>
+
+                <div class="captcha-input-group">
+                    <input 
+                        type="number" 
+                        @bind="userAnswer" 
+                        class="captcha-input"
+                        placeholder="Enter your answer"
+                        @onkeyup="HandleKeyUp"
+                        autofocus />
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @errorMessage
+                        @if (attemptsRemaining > 0)
+                        {
+                            <br />
+                            <small>@attemptsRemaining attempt(s) remaining</small>
+                        }
+                    </div>
+                }
+
+                @if (showSuccess)
+                {
+                    <div class="alert alert-success">
+                        ✓ Verification successful!
+                    </div>
+                }
+
+                <div class="captcha-actions">
+                    <button 
+                        class="btn btn-primary" 
+                        @onclick="HandleSubmit"
+                        disabled="@(string.IsNullOrWhiteSpace(userAnswer?.ToString()) || isProcessing || showSuccess)">
+                        @(isProcessing ? "Verifying..." : "Verify")
+                    </button>
+                    <button 
+                        class="btn btn-secondary" 
+                        @onclick="RefreshCaptcha"
+                        disabled="@(attemptsRemaining <= 0 || showSuccess)">
+                        New Problem
+                    </button>
+                </div>
+
+                @if (attemptsRemaining <= 0)
+                {
+                    <div class="alert alert-danger">
+                        <strong>Too many attempts.</strong> Please try again later.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnCaptchaCompleted { get; set; }
+
+    [Inject]
+    private BotProtectionService BotProtectionService { get; set; }
+
+    private string captchaProblem = string.Empty;
+    private int correctAnswer = 0;
+    private int? userAnswer;
+    private string errorMessage = string.Empty;
+    private bool showSuccess = false;
+    private bool isProcessing = false;
+    private int attemptCount = 0;
+    private const int MaxAttempts = 3;
+    private int attemptsRemaining => MaxAttempts - attemptCount;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible && string.IsNullOrEmpty(captchaProblem))
+        {
+            GenerateNewCaptcha();
+        }
+    }
+
+    private void GenerateNewCaptcha()
+    {
+        var (problem, answer) = BotProtectionService.GenerateCaptchaChallenge();
+        captchaProblem = problem;
+        correctAnswer = answer;
+        userAnswer = null;
+        errorMessage = string.Empty;
+        showSuccess = false;
+    }
+
+    private void RefreshCaptcha()
+    {
+        if (attemptsRemaining > 0)
+        {
+            GenerateNewCaptcha();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (userAnswer == null)
+        {
+            errorMessage = "Please enter an answer.";
+            return;
+        }
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (BotProtectionService.VerifyCaptcha(userAnswer.Value, correctAnswer))
+            {
+                showSuccess = true;
+                await Task.Delay(1500);
+                await OnCaptchaCompleted.InvokeAsync(true);
+                ResetCaptcha();
+            }
+            else
+            {
+                attemptCount++;
+                if (attemptsRemaining > 0)
+                {
+                    errorMessage = $"Incorrect. Try again.";
+                    userAnswer = null;
+                    GenerateNewCaptcha();
+                }
+                else
+                {
+                    errorMessage = "Too many incorrect attempts. Please try again in a moment.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error verifying captcha: {ex.Message}");
+            errorMessage = "An error occurred. Please try again.";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && userAnswer.HasValue && !isProcessing)
+        {
+            await HandleSubmit();
+        }
+    }
+
+    private void HandleClose()
+    {
+        ResetCaptcha();
+        OnCaptchaCompleted.InvokeAsync(false);
+    }
+
+    private void HandleOverlayClick()
+    {
+        // Close on overlay click (but not on modal click due to stopPropagation)
+    }
+
+    private void ResetCaptcha()
+    {
+        attemptCount = 0;
+        userAnswer = null;
+        errorMessage = string.Empty;
+        showSuccess = false;
+        captchaProblem = string.Empty;
+    }
+}

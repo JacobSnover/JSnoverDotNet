@@ -26,7 +26,11 @@ Build a dedicated photo gallery page with carousel, browseable gallery, and deta
    - LogId, IpAddress, Endpoint, Timestamp, RequestCount
    - Track guest access for rate limiting
 
+<<<<<<< HEAD
+5. Update [jsnoverdotnetdbContext.cs](Data/):
+=======
 5. Update [ApplicationDbContext.cs](Data/):
+>>>>>>> master
    - Add DbSet<StandalonePhoto>, DbSet<PhotoComment>, DbSet<PhotoReaction>, DbSet<RateLimitLog>
    - Configure relationships and constraints
    - Create migration
@@ -40,7 +44,11 @@ Build a dedicated photo gallery page with carousel, browseable gallery, and deta
    - PhotoReaction validation: valid reaction types, SessionId not empty
    - RateLimitLog validation: IpAddress format, Endpoint not empty
 
+<<<<<<< HEAD
+2. Create [Db Tests.cs](UnitTests/):
+=======
 2. Create [DbContextTests.cs](UnitTests/):
+>>>>>>> master
    - Verify relationships: StandalonePhoto → Comments, StandalonePhoto → Reactions
    - Verify nullable FKs: PhotoComment can link to both Blog and StandalonePhoto
    - Verify constraints: unique (PhotoId, SessionId, ReactionType) on PhotoReaction
@@ -500,7 +508,11 @@ Build a dedicated photo gallery page with carousel, browseable gallery, and deta
 - [wwwroot/photo-gallery.e2e.spec.ts](wwwroot/photo-gallery.e2e.spec.ts) — Playwright end-to-end tests
 
 **Files to Modify:**
+<<<<<<< HEAD
+- [Models/jsnoverdotnetdbContext.cs](Models/jsnoverdotnetdbContext.cs) — Add DbSets for new models, configure relationships
+=======
 - [Data/ApplicationDbContext.cs](Data/ApplicationDbContext.cs) — Add DbSets for new models, configure relationships
+>>>>>>> master
 - [Infrastructure/SqlRepo/JsnoRepo.cs](Infrastructure/SqlRepo/JsnoRepo.cs) — Add photo, comment, reaction repository methods
 - [Startup.cs](Startup.cs) — Register new services, add rate limit middleware
 - [Shared/NavMenu.razor](Shared/NavMenu.razor) — Add Photo Gallery link

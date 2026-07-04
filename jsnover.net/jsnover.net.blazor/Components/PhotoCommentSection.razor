@@ -1,0 +1,215 @@
+@using jsnover.net.blazor.Models
+@using jsnover.net.blazor.Infrastructure.SqlRepo
+@using System.Text.RegularExpressions
+
+<div class="photo-comment-section">
+    <!-- Comments Display -->
+    <div class="comments-list">
+        @if (comments?.Count > 0)
+        {
+            @foreach (var comment in comments)
+            {
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-name">@comment.Name</span>
+                        <span class="comment-email">@TruncateEmail(comment.Email)</span>
+                        <span class="comment-date">@comment.SubmitDate.ToString("MMM d, yyyy")</span>
+                    </div>
+                    <div class="comment-message">
+                        @comment.Message
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="no-comments">
+                <p>No comments yet. Be the first to comment!</p>
+            </div>
+        }
+    </div>
+
+    <!-- Comment Form -->
+    <div class="comment-form-section">
+        <h4>Leave a Comment</h4>
+        <EditForm Model="newComment" OnValidSubmit="HandleSubmitComment">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="email">Email <span class="required">*</span></label>
+                <InputText 
+                    @bind-Value="newComment.Email" 
+                    id="email"
+                    class="form-control"
+                    placeholder="your.email@example.com" />
+                <ValidationMessage For="@(() => newComment.Email)" class="text-danger" />
+            </div>
+
+            <div class="form-group">
+                <label for="name">Name <span class="required">*</span></label>
+                <InputText 
+                    @bind-Value="newComment.Name" 
+                    id="name"
+                    class="form-control"
+                    placeholder="Your Name" />
+                <ValidationMessage For="@(() => newComment.Name)" class="text-danger" />
+            </div>
+
+            <div class="form-group">
+                <label for="message">Message <span class="required">*</span></label>
+                <InputTextArea 
+                    @bind-Value="newComment.Message" 
+                    id="message"
+                    class="form-control"
+                    placeholder="Share your thoughts..."
+                    rows="4"
+                    maxlength="1000" />
+                <ValidationMessage For="@(() => newComment.Message)" class="text-danger" />
+                <small class="form-text text-muted">
+                    @(newComment.Message?.Length ?? 0) / 1000 characters
+                </small>
+            </div>
+
+            @if (!string.IsNullOrEmpty(submitMessage))
+            {
+                <div class="alert @(submitSuccess ? "alert-success" : "alert-danger")" role="alert">
+                    @submitMessage
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @(isSubmitting ? "Submitting..." : "Submit Comment")
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int PhotoId { get; set; }
+
+    private List<PhotoComment> comments = new();
+    private PhotoComment newComment = new() { IsVerified = false, IsApproved = false };
+    private string submitMessage = string.Empty;
+    private bool submitSuccess = false;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadComments();
+    }
+
+    private async Task LoadComments()
+    {
+        try
+        {
+            comments = await JsnoRepo.GetApprovedComments(PhotoId);
+            comments = comments?.OrderByDescending(c => c.SubmitDate).ToList() ?? new List<PhotoComment>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading comments: {ex.Message}");
+            comments = new List<PhotoComment>();
+        }
+    }
+
+    private async Task HandleSubmitComment()
+    {
+        if (string.IsNullOrWhiteSpace(newComment.Email) || 
+            string.IsNullOrWhiteSpace(newComment.Name) || 
+            string.IsNullOrWhiteSpace(newComment.Message))
+        {
+            submitMessage = "Please fill in all required fields.";
+            submitSuccess = false;
+            return;
+        }
+
+        // Validate email format
+        if (!IsValidEmail(newComment.Email))
+        {
+            submitMessage = "Please enter a valid email address.";
+            submitSuccess = false;
+            return;
+        }
+
+        // Validate message length
+        if (newComment.Message.Length > 1000)
+        {
+            submitMessage = "Message must be 1000 characters or less.";
+            submitSuccess = false;
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            newComment.PhotoId = PhotoId;
+            newComment.SubmitDate = DateTime.UtcNow;
+            // Comments are not verified or approved by default
+            newComment.IsVerified = false;
+            newComment.IsApproved = false;
+
+            var result = await JsnoRepo.AddPhotoComment(newComment);
+
+            if (result > 0)
+            {
+                submitMessage = "Comment submitted for review. Thank you!";
+                submitSuccess = true;
+                newComment = new() 
+                { 
+                    IsVerified = false, 
+                    IsApproved = false 
+                };
+                StateHasChanged();
+
+                // Clear message after 3 seconds
+                await Task.Delay(3000);
+                submitMessage = string.Empty;
+            }
+            else
+            {
+                submitMessage = "Error submitting comment. Please try again.";
+                submitSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting comment: {ex.Message}");
+            submitMessage = "An error occurred. Please try again later.";
+            submitSuccess = false;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string TruncateEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return "Anonymous";
+
+        var parts = email.Split('@');
+        if (parts.Length != 2)
+            return email;
+
+        var username = parts[0];
+        if (username.Length <= 3)
+            return username + "@" + new string('*', parts[1].Length - 1) + parts[1][^1];
+
+        return username[0] + new string('*', username.Length - 2) + username[^1] + "@" + new string('*', parts[1].Length - 3) + parts[1][^2..];
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
