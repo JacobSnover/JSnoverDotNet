@@ -115,6 +115,12 @@
         <!-- Photo Grid Section -->
         <section class="gallery-section">
             <div class="container">
+                <div>
+                    <h3 class="text-light">
+                        Hello @currentSubscriber?.UserName, welcome to the photo gallery!
+                    </h3>
+                    
+                </div>
                 @if (isLoadingGallery)
                 {
                     <div class="gallery-loading">
@@ -168,11 +174,7 @@
 
 @code {
     private List<StandalonePhoto> galleryPhotos;
-    private StandalonePhoto selectedPhoto = new StandalonePhoto
-    {
-        Url = @"https://dl.dropboxusercontent.com/scl/fi/0kydwes69vy01c4wxlj7b/20260118_215952.jpg?rlkey=6zig5d4fhff35kelzv1q6juq3&st=e1p2b82x&dl=0",
-        ThumbnailUrl = @"https://dl.dropboxusercontent.com/scl/fi/0kydwes69vy01c4wxlj7b/20260118_215952.jpg?rlkey=6zig5d4fhff35kelzv1q6juq3&st=e1p2b82x&dl=0"
-    };
+    private StandalonePhoto selectedPhoto = new StandalonePhoto();
     private bool isLoadingGallery = true;
     private bool showPhotoDetail = false;
 
@@ -194,11 +196,12 @@
         // Check session storage for previously approved access
         try
         {
+            await LoadGalleryPhotos();
             var approved = await SessionStorage.GetItemAsync<bool>("PhotoAccessApproved");
             if (approved)
             {
                 hasAccess = true;
-                await LoadGalleryPhotos();
+                //await LoadGalleryPhotos();
                 return;
             }
 
@@ -249,11 +252,7 @@
         currentPage = 1;
         try
         {
-            // galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter, currentPage, pageSize);
-            galleryPhotos = new List<StandalonePhoto>
-            {
-                selectedPhoto
-            };
+            galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter, currentPage, pageSize);
         }
         catch (Exception ex)
         {

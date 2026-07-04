@@ -94,6 +94,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
 
                 var query = _db.StandalonePhoto.Where(p => p.IsPublished);
 
+
                 // Apply filter
                 if (filterBy?.ToLower() == "standalone")
                 {
@@ -109,8 +110,8 @@ namespace jsnover.net.blazor.Infrastructure.Services
 
                 var photos = await query
                     .OrderByDescending(p => p.UploadDate)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
+                    //.Skip((page - 1) * pageSize)
+                    //.Take(pageSize)
                     .Include(p => p.Reactions)
                     .ToListAsync();
 
