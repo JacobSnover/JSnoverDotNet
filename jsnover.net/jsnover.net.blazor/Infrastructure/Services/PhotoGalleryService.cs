@@ -13,6 +13,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
     public class PhotoGalleryService
     {
         private readonly jsnoverdotnetdbContext _db;
+        private const string DROPBOX_BASE_URL = "https://dl.dropboxusercontent.com/scl/fi/";
 
         /// <summary>
         /// Initializes a new instance of PhotoGalleryService with database context via dependency injection.
@@ -21,6 +22,36 @@ namespace jsnover.net.blazor.Infrastructure.Services
         public PhotoGalleryService(jsnoverdotnetdbContext db)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
+        }
+
+        /// <summary>
+        /// Applies the Dropbox base URL prefix to photo URLs if not already present.
+        /// </summary>
+        private void ApplyDropboxBaseUrl(StandalonePhoto photo)
+        {
+            if (photo == null) return;
+
+            if (!string.IsNullOrWhiteSpace(photo.Url) && !photo.Url.StartsWith("http"))
+            {
+                photo.Url = DROPBOX_BASE_URL + photo.Url;
+            }
+
+            if (!string.IsNullOrWhiteSpace(photo.ThumbnailUrl) && !photo.ThumbnailUrl.StartsWith("http"))
+            {
+                photo.ThumbnailUrl = DROPBOX_BASE_URL + photo.ThumbnailUrl;
+            }
+        }
+
+        /// <summary>
+        /// Applies the Dropbox base URL prefix to a collection of photos.
+        /// </summary>
+        private void ApplyDropboxBaseUrls(IEnumerable<StandalonePhoto> photos)
+        {
+            if (photos == null) return;
+            foreach (var photo in photos)
+            {
+                ApplyDropboxBaseUrl(photo);
+            }
         }
 
         /// <summary>
@@ -38,6 +69,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
                     .Take(count)
                     .ToListAsync();
 
+                ApplyDropboxBaseUrls(photos);
                 return photos ?? new List<StandalonePhoto>();
             }
             catch (Exception)
@@ -82,6 +114,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
                     .Include(p => p.Reactions)
                     .ToListAsync();
 
+                ApplyDropboxBaseUrls(photos);
                 return photos ?? new List<StandalonePhoto>();
             }
             catch (Exception)
@@ -106,6 +139,8 @@ namespace jsnover.net.blazor.Infrastructure.Services
 
                 if (photo == null)
                     return null;
+
+                ApplyDropboxBaseUrl(photo);
 
                 // Return enriched object with reaction counts
                 return new
@@ -145,6 +180,7 @@ namespace jsnover.net.blazor.Infrastructure.Services
                     .OrderByDescending(p => p.UploadDate)
                     .ToListAsync();
 
+                ApplyDropboxBaseUrls(photos);
                 return photos ?? new List<StandalonePhoto>();
             }
             catch (Exception)

@@ -49,6 +49,7 @@ namespace jsnover.net.blazor
             services.AddScoped<CardService>();
             services.AddScoped<HealthTrackerService>();
             services.AddScoped<PhotoGalleryService>();
+            services.AddScoped<PhotoAccessService>();
             services.AddBlazoredSessionStorage();
             services.AddControllersWithViews();
             services.AddHttpClient();

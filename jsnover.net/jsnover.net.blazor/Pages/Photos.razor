@@ -4,9 +4,12 @@
 @using jsnover.net.blazor.Models
 @using jsnover.net.blazor.Components
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
 
 @inject PhotoGalleryService PhotoGalleryService
 @inject NavigationManager NavigationManager
+@inject PhotoAccessService PhotoAccessService
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 
 <div class="photos-page">
     <!-- Meta tags for SEO and security -->
@@ -32,7 +35,7 @@
     <!-- Hero section removed: gallery-only UX -->
 
     <!-- Filter Tabs Section -->
-    <section class="filter-section">
+    @* <section class="filter-section">
         <div class="container">
             <div class="filter-tabs btn-group" role="group">
                 <button 
@@ -55,49 +58,102 @@
                 </button>
             </div>
         </div>
-    </section>
+    </section> *@
 
-    <!-- Photo Grid Section -->
-    <section class="gallery-section">
-        <div class="container">
-            @if (isLoadingGallery)
-            {
-                <div class="gallery-loading">
-                    <p>Loading gallery...</p>
-                </div>
-            }
-            else if (galleryPhotos?.Count > 0)
-            {
-                <PhotoGallery 
-                    Photos="galleryPhotos" 
-                    CurrentPage="currentPage"
-                    OnPhotoClicked="HandlePhotoClicked" />
+    @if (!hasAccess)
+    {
+        <section class="access-section">
+            <div class="container">
+                @if (isChecking)
+                {
+                    <div class="gallery-loading">
+                        <p>Checking access...</p>
+                    </div>
+                }
+                else if (pendingRequest)
+                {
+                    <div class="alert alert-info">
+                        <p>Your request has been submitted and is awaiting approval. You will be notified by email when approval is granted.</p>
+                    </div>
+                }
+                else if (showRequestForm)
+                {
+                    @if (!string.IsNullOrWhiteSpace(validationError))
+                    {
+                        <div class="alert alert-danger">
+                            <p>@validationError</p>
+                        </div>
+                    }
+                    <EditForm Model="currentSubscriber" OnValidSubmit="SubmitAccessRequest">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="mb-2">
+                            <InputText class="form-control" @bind-Value="currentSubscriber.UserName" placeholder="Your name (optional)" />
+                        </div>
+                        <div class="mb-2">
+                            <InputText class="form-control" @bind-Value="currentSubscriber.Email" placeholder="Email address" />
+                            <ValidationMessage For="@(() => currentSubscriber.Email)" />
+                        </div>
+                        <button class="btn btn-primary" type="submit">Request access</button>
+                    </EditForm>
+                }
+                else
+                {
+                    <div class="text-light">
+                        <p>Please enter your email to view photos.</p>
+                        <div class="input-group">
+                            <input class="form-control" @bind="tempEmail" placeholder="email@example.com" />
+                            <button class="btn btn-primary" @onclick="InitializeSubscriberAndCheck">Continue</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+    else
+    {
+        <!-- Photo Grid Section -->
+        <section class="gallery-section">
+            <div class="container">
+                @if (isLoadingGallery)
+                {
+                    <div class="gallery-loading">
+                        <p>Loading gallery...</p>
+                    </div>
+                }
+                else if (galleryPhotos?.Count > 0)
+                {
+                    <PhotoGallery 
+                        Photos="galleryPhotos" 
+                        CurrentPage="currentPage"
+                        OnPhotoClicked="HandlePhotoClicked" />
 
-                <!-- Pagination Controls -->
-                <div class="pagination-controls">
-                    <button 
-                        class="btn btn-outline-primary" 
-                        @onclick="PreviousPage"
-                        disabled="@(currentPage <= 1)">
-                        Previous
-                    </button>
-                    <span class="page-info">Page @currentPage</span>
-                    <button 
-                        class="btn btn-outline-primary" 
-                        @onclick="NextPage"
-                        disabled="@(galleryPhotos.Count < pageSize)">
-                        Next
-                    </button>
-                </div>
-            }
-            else
-            {
-                <div class="gallery-empty">
-                    <p>No photos available in this category.</p>
-                </div>
-            }
-        </div>
-    </section>
+                    <!-- Pagination Controls -->
+                    <div class="pagination-controls">
+                        <button 
+                            class="btn btn-outline-light" 
+                            @onclick="PreviousPage"
+                            disabled="@(currentPage <= 1)">
+                            Previous
+                        </button>
+                        <span class="page-info">Page @currentPage</span>
+                        <button 
+                            class="btn btn-outline-light" 
+                            @onclick="NextPage"
+                            disabled="@(galleryPhotos.Count < pageSize)">
+                            Next
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="gallery-empty">
+                        <p>No photos available in this category.</p>
+                    </div>
+                }
+            </div>
+        </section>
+    }
 
     <!-- Photo Detail Modal/Page -->
     @if (showPhotoDetail && selectedPhoto != null)
@@ -124,9 +180,67 @@
     private int currentPage = 1;
     private const int pageSize = 20;
 
+    // Simple access control state
+    private bool hasAccess = false;
+    private bool pendingRequest = false;
+    private bool showRequestForm = false;
+    private bool isChecking = true;
+    private string validationError;
+    private string tempEmail;
+    private Subscribers currentSubscriber;
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadGalleryPhotos();
+        // Check session storage for previously approved access
+        try
+        {
+            var approved = await SessionStorage.GetItemAsync<bool>("PhotoAccessApproved");
+            if (approved)
+            {
+                hasAccess = true;
+                await LoadGalleryPhotos();
+                return;
+            }
+
+            var storedEmail = await SessionStorage.GetItemAsync<string>("PhotoAccessEmail");
+
+            if (!string.IsNullOrWhiteSpace(storedEmail))
+            {
+                // Check database for current status
+                var subscriber = await PhotoAccessService.GetSubscriberStatusByEmailAsync(storedEmail);
+
+                if (subscriber != null)
+                {
+                    // User has submitted a request - check approval status
+                    if (subscriber.IsApproved)
+                    {
+                        // Email is approved - grant access
+                        hasAccess = true;
+                        await SessionStorage.SetItemAsync("PhotoAccessApproved", true);
+                        await LoadGalleryPhotos();
+                        return;
+                    }
+                    else if (subscriber.AwaitingApproval)
+                    {
+                        // Email submitted but awaiting approval
+                        pendingRequest = true;
+                        isChecking = false;
+                        return;
+                    }
+                }
+                else
+                {
+                    // Email exists in session but not in database - should not happen, reset
+                    await SessionStorage.RemoveItemAsync("PhotoAccessEmail");
+                }
+            }
+        }
+        catch
+        {
+            // ignore session storage errors
+        }
+
+        isChecking = false;
     }
 
     private async Task LoadGalleryPhotos()
@@ -150,6 +264,82 @@
         {
             isLoadingGallery = false;
         }
+    }
+
+    private async Task InitializeSubscriberAndCheck()
+    {
+        if (!string.IsNullOrWhiteSpace(tempEmail))
+        {
+            currentSubscriber = await PhotoAccessService.GetOrCreateSubscriberByEmailAsync(tempEmail);
+            await CheckEmailAccess();
+        }
+    }
+
+    private async Task CheckEmailAccess()
+    {
+        validationError = null;
+        if (!string.IsNullOrWhiteSpace(currentSubscriber?.Email))
+        {
+            isChecking = true;
+            var subscriber = await PhotoAccessService.GetSubscriberStatusByEmailAsync(currentSubscriber.Email);
+
+            if (subscriber != null)
+            {
+                if (subscriber.IsApproved)
+                {
+                    // Email is approved - grant access
+                    hasAccess = true;
+                    await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+                    await SessionStorage.SetItemAsync("PhotoAccessApproved", true);
+                    await LoadGalleryPhotos();
+                }
+                else if (subscriber.AwaitingApproval)
+                {
+                    // Already submitted and awaiting approval
+                    pendingRequest = true;
+                    await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+                }
+                else
+                {
+                    // Show form to submit request
+                    showRequestForm = true;
+                    await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+                }
+            }
+            else
+            {
+                // Email not in database yet - show form to submit request
+                showRequestForm = true;
+                await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+            }
+
+            isChecking = false;
+        }        
+    }
+
+    private async Task SubmitAccessRequest()
+    {
+        validationError = null;
+        if (currentSubscriber != null && !string.IsNullOrWhiteSpace(currentSubscriber.Email))
+        {
+            try
+            {
+                currentSubscriber.AwaitingApproval = true;
+                await PhotoAccessService.CreateAccessRequestAsync(currentSubscriber);
+                pendingRequest = true;
+                showRequestForm = false;
+                await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+            }
+            catch (InvalidOperationException ex)
+            {
+                validationError = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error submitting access request: {ex.Message}");
+                validationError = "An error occurred while processing your request. Please try again.";
+            }
+        }        
     }
 
     private async Task HandleFilterChange(string filter)
