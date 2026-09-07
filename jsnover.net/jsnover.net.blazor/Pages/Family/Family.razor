@@ -1,0 +1,198 @@
+@page "/family"
+
+@using jsnover.net.blazor.Infrastructure.Services
+@using jsnover.net.blazor.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject NavigationManager NavigationManager
+@inject PhotoAccessService PhotoAccessService
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+
+<div class="family-page">
+    @if (!hasAccess)
+    {
+        <section class="family-access-section">
+            <div class="container">
+                @if (isChecking)
+                {
+                    <div class="family-status">
+                        <p>Checking access...</p>
+                    </div>
+                }
+                else if (pendingRequest)
+                {
+                    <div class="alert alert-info">
+                        <p>Your request has been submitted and is awaiting approval. You will be notified by email when approval is granted.</p>
+                    </div>
+                }
+                else if (showRequestForm)
+                {
+                    @if (!string.IsNullOrWhiteSpace(validationError))
+                    {
+                        <div class="alert alert-danger">
+                            <p>@validationError</p>
+                        </div>
+                    }
+                    <EditForm Model="currentSubscriber" OnValidSubmit="SubmitAccessRequest">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="mb-2">
+                            <InputText class="form-control" @bind-Value="currentSubscriber.UserName" placeholder="Your name (optional)" />
+                        </div>
+                        <div class="mb-2">
+                            <InputText class="form-control" @bind-Value="currentSubscriber.Email" placeholder="Email address" />
+                            <ValidationMessage For="@(() => currentSubscriber.Email)" />
+                        </div>
+                        <button class="btn btn-primary" type="submit">Request access</button>
+                    </EditForm>
+                }
+                else
+                {
+                    <div class="family-email-form text-light">
+                        <p>Please enter your email to access the family area.</p>
+                        <div class="input-group">
+                            <input class="form-control" @bind="tempEmail" placeholder="email@example.com" />
+                            <button class="btn btn-primary" @onclick="InitializeSubscriberAndCheck">Continue</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="family-menu-section">
+            <div class="container">
+                <h2 class="text-light">Family</h2>
+                <p class="text-light">Welcome @currentSubscriber?.UserName.</p>
+                <nav class="family-menu" aria-label="Family sections">
+                    <NavLink class="btn btn-primary" href="family/photos">Photos</NavLink>
+                    <NavLink class="btn btn-primary" href="family/chores">Chore Board</NavLink>
+                </nav>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private bool hasAccess;
+    private bool pendingRequest;
+    private bool showRequestForm;
+    private bool isChecking = true;
+    private string validationError;
+    private string tempEmail;
+    private Subscribers currentSubscriber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var approved = await SessionStorage.GetItemAsync<bool>("PhotoAccessApproved");
+            var storedEmail = await SessionStorage.GetItemAsync<string>("PhotoAccessEmail");
+
+            if (approved)
+            {
+                hasAccess = true;
+                currentSubscriber = await PhotoAccessService.GetSubscriberStatusByEmailAsync(storedEmail);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(storedEmail))
+            {
+                var subscriber = await PhotoAccessService.GetSubscriberStatusByEmailAsync(storedEmail);
+                if (subscriber?.IsApproved == true)
+                {
+                    currentSubscriber = subscriber;
+                    hasAccess = true;
+                    await SessionStorage.SetItemAsync("PhotoAccessApproved", true);
+                    return;
+                }
+
+                if (subscriber?.AwaitingApproval == true)
+                {
+                    pendingRequest = true;
+                    return;
+                }
+
+                await SessionStorage.RemoveItemAsync("PhotoAccessEmail");
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            isChecking = false;
+        }
+    }
+
+    private async Task InitializeSubscriberAndCheck()
+    {
+        if (string.IsNullOrWhiteSpace(tempEmail))
+        {
+            return;
+        }
+
+        currentSubscriber = await PhotoAccessService.GetOrCreateSubscriberByEmailAsync(tempEmail);
+        await CheckEmailAccess();
+    }
+
+    private async Task CheckEmailAccess()
+    {
+        validationError = null;
+        if (string.IsNullOrWhiteSpace(currentSubscriber?.Email))
+        {
+            return;
+        }
+
+        isChecking = true;
+        var subscriber = await PhotoAccessService.GetSubscriberStatusByEmailAsync(currentSubscriber.Email);
+
+        if (subscriber?.IsApproved == true)
+        {
+            currentSubscriber = subscriber;
+            hasAccess = true;
+            await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+            await SessionStorage.SetItemAsync("PhotoAccessApproved", true);
+        }
+        else if (subscriber?.AwaitingApproval == true)
+        {
+            pendingRequest = true;
+            await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+        }
+        else
+        {
+            showRequestForm = true;
+            await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+        }
+
+        isChecking = false;
+    }
+
+    private async Task SubmitAccessRequest()
+    {
+        validationError = null;
+        if (currentSubscriber == null || string.IsNullOrWhiteSpace(currentSubscriber.Email))
+        {
+            return;
+        }
+
+        try
+        {
+            currentSubscriber.AwaitingApproval = true;
+            await PhotoAccessService.CreateAccessRequestAsync(currentSubscriber);
+            pendingRequest = true;
+            showRequestForm = false;
+            await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
+        }
+        catch (InvalidOperationException ex)
+        {
+            validationError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting access request: {ex.Message}");
+            validationError = "An error occurred while processing your request. Please try again.";
+        }
+    }
+}

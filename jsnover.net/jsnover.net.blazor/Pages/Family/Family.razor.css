@@ -1,0 +1,26 @@
+::deep .family-page {
+    padding: 0;
+    margin: 0;
+}
+
+.family-access-section,
+.family-menu-section {
+    padding: 3rem 0;
+}
+
+.family-email-form {
+    max-width: 520px;
+}
+
+.family-status {
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    color: white;
+}
+
+.family-menu {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}

@@ -1,0 +1,18 @@
+@page "/family/chores"
+
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+@inject NavigationManager NavigationManager
+
+<div class="container text-light">
+    <h2>Chore Board</h2>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await SessionStorage.GetItemAsync<bool>("PhotoAccessApproved"))
+        {
+            NavigationManager.NavigateTo("/family", replace: true);
+        }
+    }
+}

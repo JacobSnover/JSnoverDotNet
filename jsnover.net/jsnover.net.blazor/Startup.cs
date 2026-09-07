@@ -33,10 +33,10 @@ namespace jsnover.net.blazor
         {
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")));
+                options.UseSqlServer(Environment.GetEnvironmentVariable("JsnoDotNetDb")));
             services.AddDbContext<jsnoverdotnetdbContext>(options =>
-                options.UseSqlServer(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")));
-            ContextOptions.connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+                options.UseSqlServer(Environment.GetEnvironmentVariable("JsnoDotNetDb")));
+            ContextOptions.connectionString = Environment.GetEnvironmentVariable("JsnoDotNetDb");
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddRazorPages();
