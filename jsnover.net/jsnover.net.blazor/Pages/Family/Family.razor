@@ -65,10 +65,18 @@
             <div class="container">
                 <h2 class="text-light">Family</h2>
                 <p class="text-light">Welcome @currentSubscriber?.UserName.</p>
-                <nav class="family-menu" aria-label="Family sections">
-                    <NavLink class="btn btn-primary" href="family/photos">Photos</NavLink>
-                    <NavLink class="btn btn-primary" href="family/chores">Chore Board</NavLink>
-                </nav>
+                <div class="family-card-grid" aria-label="Family sections">
+                    <NavLink class="family-card family-card-photos" href="family/photos">
+                        <span class="family-card-emoji" aria-hidden="true">📸</span>
+                        <span class="family-card-title">Photos</span>
+                        <span class="family-card-subtitle">Family memories</span>
+                    </NavLink>
+                    <NavLink class="family-card family-card-chores" href="family/chores">
+                        <span class="family-card-emoji" aria-hidden="true">✅</span>
+                        <span class="family-card-title">Chore Board</span>
+                        <span class="family-card-subtitle">Checklist and tasks</span>
+                    </NavLink>
+                </div>
             </div>
         </section>
     }

@@ -37,6 +37,7 @@ namespace jsnover.net.blazor.Models
         public virtual DbSet<PhotoComment> PhotoComment { get; set; }
         public virtual DbSet<PhotoReaction> PhotoReaction { get; set; }
         public virtual DbSet<RateLimitLog> RateLimitLog { get; set; }
+        public virtual DbSet<Chore> Chore { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -251,6 +252,28 @@ namespace jsnover.net.blazor.Models
                     .HasMaxLength(256);
 
                 entity.Property(e => e.SubscribeDate).HasColumnType("date");
+            });
+
+            modelBuilder.Entity<Chore>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .ValueGeneratedNever();
+
+                entity.Property(e => e.LastCompleted)
+                    .HasColumnType("datetime");
+
+                entity.Property(e => e.Worker)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Notes)
+                    .HasMaxLength(2000);
             });
 
             modelBuilder.Entity<Tag>(entity =>

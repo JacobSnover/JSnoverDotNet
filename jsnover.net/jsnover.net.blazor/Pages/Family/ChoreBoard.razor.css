@@ -1,0 +1,135 @@
+.chore-board-page {
+    padding: 2rem 0 3rem;
+}
+
+.chore-board-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.chore-form-card,
+.chore-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.chore-form-card {
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.chore-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.chore-card {
+    padding: 0.7rem 1rem;
+}
+
+.chore-card.completed {
+    border-color: rgba(40, 167, 69, 0.8);
+    background: rgba(40, 167, 69, 0.12);
+}
+
+.chore-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-height: 2.5rem;
+}
+
+.chore-name {
+    flex: 1 1 24%;
+    min-width: 10rem;
+}
+
+.chore-date,
+.chore-completed-by {
+    flex: 0 1 16%;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.9rem;
+}
+
+.chore-completed-by::before {
+    content: "By: ";
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.chore-details {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.chore-details summary {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.chore-details-content {
+    position: absolute;
+    z-index: 2;
+    right: 1rem;
+    width: min(28rem, calc(100vw - 3rem));
+    margin-top: 0.5rem;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    background: #241844;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.status-pill {
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-pill.pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffd166;
+}
+
+.status-pill.complete {
+    background: rgba(40, 167, 69, 0.18);
+    color: #9ae6b4;
+}
+
+.chore-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.chore-empty {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 700px) {
+    .chore-row {
+        flex-wrap: wrap;
+    }
+
+    .chore-name {
+        flex-basis: 100%;
+    }
+
+    .chore-date,
+    .chore-completed-by {
+        flex-basis: auto;
+    }
+}

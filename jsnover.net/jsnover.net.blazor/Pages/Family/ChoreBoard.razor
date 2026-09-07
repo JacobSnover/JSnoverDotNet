@@ -1,18 +1,215 @@
 @page "/family/chores"
 
+@using jsnover.net.blazor.Infrastructure.Services
+@using jsnover.net.blazor.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject FamilyChoreService FamilyChoreService
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
-<div class="container text-light">
-    <h2>Chore Board</h2>
+<div class="chore-board-page container text-light">
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+
+    <div class="chore-board-toolbar">
+        <h2>Chore Board</h2>
+        <button class="btn btn-primary" @onclick="ShowAddForm">Add chore</button>
+    </div>
+
+    @if (showForm)
+    {
+        <div class="chore-form-card">
+            <EditForm Model="editingChore" OnValidSubmit="SaveChore">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="chore-name">Chore</label>
+                        <InputText id="chore-name" class="form-control" @bind-Value="editingChore.Name" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="chore-notes">Notes</label>
+                        <InputTextArea id="chore-notes" class="form-control" @bind-Value="editingChore.Notes" rows="3" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-success">@(isEditing ? "Save changes" : "Add chore")</button>
+                    <button type="button" class="btn btn-outline-light" @onclick="CancelForm">Cancel</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="alert alert-info">Loading chores...</div>
+    }
+    else if (chores.Count == 0)
+    {
+        <div class="chore-empty">No chores yet. Add the first task.</div>
+    }
+    else
+    {
+        <div class="chore-list">
+            @foreach (var chore in chores)
+            {
+                <div class="chore-card @(chore.Status ? "completed" : string.Empty)">
+                    <div class="chore-row">
+                        <strong class="chore-name">@chore.Name</strong>
+                        <span class="chore-date">@(chore.LastCompleted?.ToString("MMM d, yyyy") ?? "Not completed")</span>
+                        <span class="chore-completed-by">@(string.IsNullOrWhiteSpace(chore.Worker) ? "Not yet" : chore.Worker)</span>
+                        <span class="status-pill @(chore.Status ? "complete" : "pending")">@(chore.Status ? "Complete" : "Pending")</span>
+                        <button class="btn btn-sm btn-success" @onclick="() => ToggleComplete(chore.Id)">@(chore.Status ? "Mark pending" : "Mark done")</button>
+                        <details class="chore-details">
+                            <summary aria-label="More chore details">Details</summary>
+                            <div class="chore-details-content">
+                                <p>@(string.IsNullOrWhiteSpace(chore.Notes) ? "No notes added." : chore.Notes)</p>
+                                <div class="chore-actions">
+                                    <button class="btn btn-sm btn-outline-light" @onclick="() => EditChore(chore)">Edit</button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteChore(chore.Id)">Delete</button>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 </div>
 
 @code {
+    private List<Chore> chores = new();
+    private Chore editingChore = new();
+    private Subscribers currentSubscriber;
+    private bool showForm;
+    private bool isEditing;
+    private bool isLoading = true;
+    private string errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
-        if (!await SessionStorage.GetItemAsync<bool>("PhotoAccessApproved"))
+        var email = await SessionStorage.GetItemAsync<string>("PhotoAccessEmail");
+        currentSubscriber = await FamilyChoreService.GetAuthorizedSubscriberAsync(email);
+        if (currentSubscriber == null)
         {
             NavigationManager.NavigateTo("/family", replace: true);
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            chores = await FamilyChoreService.GetChoresAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading chores: {ex.Message}");
+            errorMessage = "The chore board could not be loaded. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowAddForm()
+    {
+        editingChore = new Chore();
+        isEditing = false;
+        showForm = true;
+    }
+
+    private void EditChore(Chore chore)
+    {
+        editingChore = new Chore
+        {
+            Id = chore.Id,
+            Name = chore.Name,
+            Worker = chore.Worker,
+            Notes = chore.Notes,
+            Status = chore.Status,
+            LastCompleted = chore.LastCompleted
+        };
+        isEditing = true;
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        editingChore = new Chore();
+    }
+
+    private async Task SaveChore()
+    {
+        errorMessage = null;
+        try
+        {
+            if (isEditing)
+            {
+                await FamilyChoreService.UpdateChoreAsync(editingChore);
+            }
+            else
+            {
+                await FamilyChoreService.AddChoreAsync(editingChore, currentSubscriber);
+            }
+
+            CancelForm();
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            var databaseMessage = ex.GetBaseException().Message;
+            Console.WriteLine($"Error saving chore: {databaseMessage}");
+            errorMessage = $"The chore could not be saved: {databaseMessage}";
+        }
+    }
+
+    private async Task ToggleComplete(int choreId)
+    {
+        errorMessage = null;
+        try
+        {
+            await FamilyChoreService.ToggleCompleteAsync(choreId, currentSubscriber);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating chore: {ex.Message}");
+            errorMessage = "The chore could not be updated. Please try again.";
+        }
+    }
+
+    private async Task DeleteChore(int choreId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Delete this chore?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        errorMessage = null;
+        try
+        {
+            await FamilyChoreService.DeleteChoreAsync(choreId);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting chore: {ex.Message}");
+            errorMessage = "The chore could not be deleted. Please try again.";
         }
     }
 }
