@@ -1,0 +1,69 @@
+<svg viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9c42ff"/>
+      <stop offset="100%" stop-color="#94d13d"/>
+    </linearGradient>
+    <linearGradient id="j" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9a6bc8"/>
+      <stop offset="100%" stop-color="#9a5ddb"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Heart -->
+  <path d="
+    M400 135
+
+    C335 55 140 95 140 285
+    C140 470 255 520 400 740
+
+    C545 620 660 470 660 285
+    C660 95 465 55 400 135
+  "
+  fill="none"
+  stroke="url(#g)"
+  stroke-width="34"
+  stroke-linecap="round"
+  stroke-linejoin="round"/>
+
+  <!-- Center spine -->
+  <path d="
+    M400 135
+    C400 260 400 430 400 740
+  "
+  fill="none"
+  stroke="url(#g)"
+  stroke-width="34"
+  stroke-linecap="round"/>
+
+  <!-- S wrapping the spine -->
+  <path d="
+    M400 135
+
+    C390 170 365 205 340 235
+    C315 265 320 305 380 345
+
+    C470 405 505 465 490 540
+
+    C475 615 440 680 400 740
+  "
+  fill="none"
+  stroke="url(#g)"
+  stroke-width="34"
+  stroke-linecap="round"
+  stroke-linejoin="round"/>
+
+   <path d="
+    M400 135
+
+    C390 170 365 205 340 235
+    C309 265 320 280 160 400
+  "
+  fill="none"
+  stroke="url(#j)"
+  stroke-width="34"
+  stroke-linecap="round"
+  stroke-linejoin="round"/>
+
+</svg>
