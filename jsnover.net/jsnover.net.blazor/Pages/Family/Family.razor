@@ -6,6 +6,7 @@
 
 @inject NavigationManager NavigationManager
 @inject PhotoAccessService PhotoAccessService
+@inject FamilyChoreService FamilyChoreService
 @inject Blazored.SessionStorage.ISessionStorageService SessionStorage
 
 <div class="family-page">
@@ -71,11 +72,14 @@
                         <span class="family-card-title">Photos</span>
                         <span class="family-card-subtitle">Family memories</span>
                     </NavLink>
-                    <NavLink class="family-card family-card-chores" href="family/chores">
-                        <span class="family-card-emoji" aria-hidden="true">✅</span>
-                        <span class="family-card-title">Chore Board</span>
-                        <span class="family-card-subtitle">Checklist and tasks</span>
-                    </NavLink>
+                    @if (canAccessChoreBoard)
+                    {
+                        <NavLink class="family-card family-card-chores" href="family/chores">
+                            <span class="family-card-emoji" aria-hidden="true">✅</span>
+                            <span class="family-card-title">Chore Board</span>
+                            <span class="family-card-subtitle">Checklist and tasks</span>
+                        </NavLink>
+                    }
                 </div>
             </div>
         </section>
@@ -84,6 +88,7 @@
 
 @code {
     private bool hasAccess;
+    private bool canAccessChoreBoard;
     private bool pendingRequest;
     private bool showRequestForm;
     private bool isChecking = true;
@@ -102,6 +107,7 @@
             {
                 hasAccess = true;
                 currentSubscriber = await PhotoAccessService.GetSubscriberStatusByEmailAsync(storedEmail);
+                canAccessChoreBoard = await IsChoreBoardAuthorized(storedEmail);
                 return;
             }
 
@@ -112,6 +118,7 @@
                 {
                     currentSubscriber = subscriber;
                     hasAccess = true;
+                    canAccessChoreBoard = await IsChoreBoardAuthorized(storedEmail);
                     await SessionStorage.SetItemAsync("PhotoAccessApproved", true);
                     return;
                 }
@@ -160,6 +167,7 @@
         {
             currentSubscriber = subscriber;
             hasAccess = true;
+            canAccessChoreBoard = await IsChoreBoardAuthorized(currentSubscriber.Email);
             await SessionStorage.SetItemAsync("PhotoAccessEmail", currentSubscriber.Email);
             await SessionStorage.SetItemAsync("PhotoAccessApproved", true);
         }
@@ -175,6 +183,11 @@
         }
 
         isChecking = false;
+    }
+
+    private async Task<bool> IsChoreBoardAuthorized(string email)
+    {
+        return await FamilyChoreService.GetAuthorizedSubscriberAsync(email) != null;
     }
 
     private async Task SubmitAccessRequest()
