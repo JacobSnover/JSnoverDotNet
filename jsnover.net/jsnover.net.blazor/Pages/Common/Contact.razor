@@ -1,6 +1,7 @@
 ﻿@page "/contact"
 @using Microsoft.Extensions.Logging
 @inject ILogger<jsnover.net.blazor.DataTransferObjects.Common.ContactModel> log
+@inject jsnover.net.blazor.Infrastructure.Services.Submit ContactSubmit
 
 
 <div class="pad-25x3">
@@ -94,7 +95,7 @@
             saving = "Saving . . .";
             contactRequest.Issue = isIssue;
             contactRequest.Business = isBusiness;
-            var uploaded = await Infrastructure.Services.Submit.SubmitContactRequest(contactRequest);
+            var uploaded = await ContactSubmit.SubmitContactRequest(contactRequest);
             if (uploaded)
             {
                 saving = string.Empty;

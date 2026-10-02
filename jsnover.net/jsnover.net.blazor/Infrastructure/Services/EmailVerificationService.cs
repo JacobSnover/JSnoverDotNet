@@ -1,7 +1,9 @@
 using jsnover.net.blazor.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using SendGrid.Helpers.Mail;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using MimeKit;
+using System.Net;
 using System;
 using System.Threading.Tasks;
 using System.Linq;
@@ -15,14 +17,18 @@ namespace jsnover.net.blazor.Infrastructure.Services
     public class EmailVerificationService
     {
         private readonly jsnoverdotnetdbContext _db;
+        private readonly SmtpEmailOptions _smtpOptions;
         private const int VerificationCodeExpiryMinutes = 24 * 60; // 24 hours
-        private const string FromEmail = "jsnover@jsnover.net";
-        private const string FromName = "jsnover.net";
-        private const string AdminEmail = "snoverjacob@yahoo.com";
+        private readonly IEmailSender _emailSender;
 
-        public EmailVerificationService(jsnoverdotnetdbContext db)
+        public EmailVerificationService(
+            jsnoverdotnetdbContext db,
+            IEmailSender emailSender,
+            IOptions<SmtpEmailOptions> smtpOptions)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
+            _emailSender = emailSender ?? throw new ArgumentNullException(nameof(emailSender));
+            _smtpOptions = smtpOptions.Value;
         }
 
         /// <summary>
@@ -91,32 +97,32 @@ namespace jsnover.net.blazor.Infrastructure.Services
                 if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(verificationCode))
                     return false;
 
-                string verificationLink = $"https://jsnover.net/verify-comment?code={verificationCode}";
+                string verificationLink = $"https://jsnover.net/verify-comment?code={Uri.EscapeDataString(verificationCode)}";
 
-                var msg = new SendGridMessage()
+                var message = new MimeMessage();
+                message.From.Add(new MailboxAddress(_smtpOptions.FromName, _smtpOptions.FromAddress));
+                message.To.Add(new MailboxAddress(name ?? string.Empty, email));
+                message.Subject = "Verify Your Photo Comment - jsnover.net";
+                message.Body = new BodyBuilder
                 {
-                    From = new EmailAddress(FromEmail, FromName),
-                    Subject = "Verify Your Photo Comment - jsnover.net",
-                    PlainTextContent =
+                    TextBody =
                         $"Hi {name},\n\n" +
                         $"Thank you for commenting on jsnover.net! Please verify your comment by clicking the link below:\n\n" +
                         $"{verificationLink}\n\n" +
                         $"This link will expire in 24 hours.\n\n" +
                         $"If you did not submit this comment, please ignore this email.\n\n" +
                         $"Best regards,\nThe jsnover.net Team",
-                    HtmlContent =
-                        $"<p>Hi {name},</p>" +
+                    HtmlBody =
+                        $"<p>Hi {WebUtility.HtmlEncode(name ?? string.Empty)},</p>" +
                         $"<p>Thank you for commenting on jsnover.net! Please verify your comment by clicking the link below:</p>" +
                         $"<p><a href=\"{verificationLink}\" style=\"background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;\">Verify Comment</a></p>" +
                         $"<p>This link will expire in 24 hours.</p>" +
                         $"<p>If you did not submit this comment, please ignore this email.</p>" +
                         $"<p>Best regards,<br/>The jsnover.net Team</p>"
-                };
+                }.ToMessageBody();
 
-                msg.AddTo(new EmailAddress(email, name));
-
-                // Send email via SendGrid
-                return await SendEmailAsync(msg);
+                await _emailSender.SendAsync(message);
+                return true;
             }
             catch (Exception)
             {
@@ -124,37 +130,5 @@ namespace jsnover.net.blazor.Infrastructure.Services
             }
         }
 
-        /// <summary>
-        /// Sends email via SendGrid API.
-        /// </summary>
-        private async Task<bool> SendEmailAsync(SendGridMessage msg)
-        {
-            try
-            {
-                var apiKey = Environment.GetEnvironmentVariable("SendGrid:ApiKey");
-
-                if (string.IsNullOrWhiteSpace(apiKey))
-                {
-                    // Try reading from appsettings as fallback
-                    var builder = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
-                        .AddJsonFile("appsettings.json", optional: false)
-                        .Build();
-                    apiKey = builder.GetValue<string>("SendGrid:ApiKey");
-                }
-
-                if (string.IsNullOrWhiteSpace(apiKey))
-                    return false;
-
-                var client = new SendGrid.SendGridClient(apiKey);
-                var response = await client.SendEmailAsync(msg);
-
-                return response.StatusCode == System.Net.HttpStatusCode.Accepted ||
-                       response.StatusCode == System.Net.HttpStatusCode.OK;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
     }
 }

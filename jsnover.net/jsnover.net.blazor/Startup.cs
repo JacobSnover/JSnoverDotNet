@@ -45,6 +45,10 @@ namespace jsnover.net.blazor
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
             services.AddScoped<ToolService>();
+            services.Configure<SmtpEmailOptions>(Configuration.GetSection(SmtpEmailOptions.SectionName));
+            services.AddScoped<IEmailSender, SmtpEmailSender>();
+            services.AddScoped<EmailService>();
+            services.AddScoped<Submit>();
             services.AddSingleton<BlogListModel>();
             services.AddScoped<BlogService>();
             services.AddScoped<BlogViewModel>();

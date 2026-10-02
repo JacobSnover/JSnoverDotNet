@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager nav
+@inject Infrastructure.Services.BlogService BlogService
 
 <div class="sidebar">
     <NavMenu />
@@ -33,7 +34,7 @@
 
     private async Task<bool> AddSubscriber()
     {
-        var hasSubscribed = await Infrastructure.Services.BlogService.AddSubscriber(subscribeModel.Email);
+        var hasSubscribed = await BlogService.AddSubscriber(subscribeModel.Email);
         if (hasSubscribed)
         {
             subscribed = "Thank you for subscribing!";

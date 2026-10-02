@@ -13,6 +13,12 @@ namespace jsnover.net.blazor.Infrastructure.Services
     public class BlogService
     {
         private static jsnoverdotnetdbContext db;
+        private readonly EmailService _emailService;
+
+        public BlogService(EmailService emailService)
+        {
+            _emailService = emailService;
+        }
 
         private static async Task<List<BlogDisplayModel>> GetDataFromAzureSql()
         {
@@ -84,22 +90,27 @@ namespace jsnover.net.blazor.Infrastructure.Services
             return await JsnoRepo.UpdateBlog(BlogEditModel.MapToDto(blog));
         }
 
-        public static async Task<bool> SubmitComment(BlogCommentModel comment)
+        public async Task<bool> SubmitComment(BlogCommentModel comment)
         {
-            if (comment.Subscribe) await AddSubscriber(comment.Email);
+            var saved = await JsnoRepo.SubmitComment(BlogCommentModel.MapToDto(comment));
+            if (saved && comment.Subscribe)
+                await AddSubscriber(comment.Email);
 
-            return await JsnoRepo.SubmitComment(BlogCommentModel.MapToDto(comment));
+            return saved;
         }
 
-        public static async Task<bool> AddSubscriber(string email)
+        public async Task<bool> AddSubscriber(string email)
         {
-            await EmailService.NotifySnover(email);
-            return await JsnoRepo.AddSubscriber(email);
+            var saved = await JsnoRepo.AddSubscriber(email);
+            if (saved)
+                await _emailService.NotifySnover(email);
+
+            return saved;
         }
 
         public async Task NotifySnoverAboutComment(BlogCommentModel comment, BlogDisplayModel blog)
         {
-            await EmailService.NotifySnover(comment, blog);
+            await _emailService.NotifySnover(comment, blog);
         }
 
         public async Task<List<BlogDisplayModel>> GetBlogs()

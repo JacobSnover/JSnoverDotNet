@@ -81,8 +81,8 @@ Search/filtering logic lives in `Blogs.razor` code-behind, not in service.
 
 1. **Async Non-Blocking:** Email failures don't crash the app; log and continue
 2. **HTML Escaping:** Always escape user content in email templates (comments)
-3. **Batch Sends:** For large subscriber lists, consider SendGrid `PersonalizedSendGridMessage`
-4. **Rate Limiting:** SendGrid has rate limits; implement queue if needed
+3. **Batch Sends:** Keep SMTP notifications small and handle provider rate limits if subscriber volume grows
+4. **Rate Limiting:** Queue bulk sends if the mail provider imposes rate limits
 5. **Unsubscribe Links:** Consider adding unsubscribe link in email template (GDPR/CAN-SPAM compliance)
 
 
@@ -99,7 +99,7 @@ Search/filtering logic lives in `Blogs.razor` code-behind, not in service.
 | **No BlogService tests** | Create `BlogServiceTests.cs` with mocked repository |
 | **No comment validation** | Add tests for email validation, comment text sanitization |
 | **No tag search tests** | Implement tag search tests |
-| **Email not tested** | Mock SendGrid and test notification sending |
+| **Email not tested** | Mock `IEmailSender` and test notification sending |
 
 ## Performance & Optimization
 

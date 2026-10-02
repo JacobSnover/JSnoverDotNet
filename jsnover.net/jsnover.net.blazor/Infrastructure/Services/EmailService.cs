@@ -1,91 +1,109 @@
 ﻿using jsnover.net.blazor.DataTransferObjects.BlogModels;
 using jsnover.net.blazor.DataTransferObjects.Common;
-using Microsoft.Extensions.Configuration;
-using SendGrid;
-using SendGrid.Helpers.Mail;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using MimeKit;
+using System.Net;
 using System;
 using System.Threading.Tasks;
 
 namespace jsnover.net.blazor.Infrastructure.Services
 {
     public class EmailService
-    {        
+    {
+        private readonly IEmailSender _emailSender;
+        private readonly ILogger<EmailService> _logger;
+        private readonly SmtpEmailOptions _smtpOptions;
+
+        public EmailService(
+            IEmailSender emailSender,
+            ILogger<EmailService> logger,
+            IOptions<SmtpEmailOptions> smtpOptions)
+        {
+            _emailSender = emailSender;
+            _logger = logger;
+            _smtpOptions = smtpOptions.Value;
+        }
+
         /// <summary>
         /// Notify Snover about new comment on blog
         /// </summary>
         /// <param name="comment"></param>
         /// <param name="blog"></param>
-        internal static async Task NotifySnover(BlogCommentModel comment, BlogDisplayModel blog)
+        internal async Task NotifySnover(BlogCommentModel comment, BlogDisplayModel blog)
         {
-            var msg = new SendGridMessage()
+            var message = CreateMessage("New Contact Request jsnover.net");
+            var bodyBuilder = new BodyBuilder
             {
-                From = new EmailAddress("jsnover@jsnover.net", "jsnover.net"),
-                Subject = "New Contact Request jsnover.net",
-                PlainTextContent =
+                TextBody =
                $"New Comment on Blog: {blog.Title}, Name: {comment.Name}, Email: {comment.Email}, " +
                $"Subscribe: {comment.Subscribe}, Liked: {comment.Liked}, Comment: {comment.Body}",
-                HtmlContent =
-               $"<strong>New Comment on Blog</strong>: {blog.Title}<br/>" +
-                $"<strong>Name</strong>: {comment.Name}<br/>" +
-                $"<strong>Email</strong>: {comment.Email}<br/>" +
+                HtmlBody =
+               $"<strong>New Comment on Blog</strong>: {Encode(blog.Title)}<br/>" +
+                $"<strong>Name</strong>: {Encode(comment.Name)}<br/>" +
+                $"<strong>Email</strong>: {Encode(comment.Email)}<br/>" +
                 $"<strong>Subscribe</strong>: {comment.Subscribe}<br/>" +
                 $"<strong>Liked</strong>: {comment.Liked}<br/>" +
-                $"<strong>Comment</strong>: {comment.Body}"
+                $"<strong>Comment</strong>: {Encode(comment.Body)}"
             };
-            msg.AddTo(new EmailAddress("snoverjacob@yahoo.com", "Randy"));
-            await SendEmail(msg);
+            message.Body = bodyBuilder.ToMessageBody();
+            await SendEmailAsync(message, "blog comment");
         }
 
-        internal static async Task NotifySnover(string subscriberEmail)
+        internal async Task NotifySnover(string subscriberEmail)
         {
-            var msg = new SendGridMessage()
+            var message = CreateMessage("New Subscriber jsnover.net");
+            message.Body = new BodyBuilder
             {
-                From = new EmailAddress("jsnover@jsnover.net", "jsnover.net"),
-                Subject = "New Subscriber jsnover.net",
-                PlainTextContent =
-                $"New Subscriber: {subscriberEmail}",
-                HtmlContent =
-                $"<strong>New Subscriber</strong>: {subscriberEmail}<br/>"
-            };
-            msg.AddTo(new EmailAddress("snoverjacob@yahoo.com", "Randy"));
-            await SendEmail(msg);
+                TextBody = $"New Subscriber: {subscriberEmail}",
+                HtmlBody = $"<strong>New Subscriber</strong>: {Encode(subscriberEmail)}<br/>"
+            }.ToMessageBody();
+            await SendEmailAsync(message, "subscriber");
         }
 
-        internal static async Task NotifySnover(ContactModel contactRequest)
+        internal async Task NotifySnover(ContactModel contactRequest)
         {
-            var msg = new SendGridMessage()
+            var message = CreateMessage("jsnover.net New Contact Request");
+            message.Body = new BodyBuilder
             {
-                From = new EmailAddress("jsnover@jsnover.net", "jsnover.net"),
-                Subject = "jsnover.net New Contact Request",
-                PlainTextContent =
+                TextBody =
                 $"NEW CONTACT REQUEST - Name: {contactRequest.Name}, Email: {contactRequest.Email}, Request Body: {contactRequest.Body}, ISSUE WITH SITE: {contactRequest.Issue}",
-                HtmlContent =
+                HtmlBody =
                 $"<strong>NEW CONTACT REQUEST</strong><br/>" +
-                $"<strong>Name</strong>: {contactRequest.Name}<br/>" +
-                $"<strong>Email</strong>: {contactRequest.Email}<br/>" +
-                $"<strong>Request Body</strong>: {contactRequest.Body}<br/>" +
+                $"<strong>Name</strong>: {Encode(contactRequest.Name)}<br/>" +
+                $"<strong>Email</strong>: {Encode(contactRequest.Email)}<br/>" +
+                $"<strong>Request Body</strong>: {Encode(contactRequest.Body)}<br/>" +
                 $"<strong>ISSUE WITH SITE</strong>: {contactRequest.Issue}<br/>"
-            };
-            msg.AddTo(new EmailAddress("snoverjacob@yahoo.com", "Randy"));
-            await SendEmail(msg);
+            }.ToMessageBody();
+            await SendEmailAsync(message, "contact request");
         }
 
-        private static async Task SendEmail(SendGridMessage msg)
+        private MimeMessage CreateMessage(string subject)
         {
-            var builder = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false)
-                .Build();
-
-            var apiKey = Environment.GetEnvironmentVariable("SendGrid:ApiKey");
-
-            if (apiKey is null)
+            var message = new MimeMessage
             {
-                apiKey = builder.GetValue<string>("SendGrid:ApiKey");
-            }
+                Subject = subject
+            };
+            message.From.Add(new MailboxAddress(_smtpOptions.FromName, _smtpOptions.FromAddress));
+            message.To.Add(new MailboxAddress("Randy", "snoverjacob@yahoo.com"));
+            return message;
+        }
 
-            var client = new SendGridClient(apiKey);
-            
-            await client.SendEmailAsync(msg);
+        private async Task SendEmailAsync(MimeMessage message, string notificationType)
+        {
+            try
+            {
+                await _emailSender.SendAsync(message);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to send {NotificationType} email notification.", notificationType);
+            }
+        }
+
+        private static string Encode(string value)
+        {
+            return WebUtility.HtmlEncode(value ?? string.Empty);
         }
     }
 }

@@ -9,13 +9,22 @@ namespace jsnover.net.blazor.Infrastructure.Services
 {
     public class Submit
     {
-        public static async Task<bool> SubmitContactRequest(ContactModel contactRequest)
+        private readonly EmailService _emailService;
+
+        public Submit(EmailService emailService)
+        {
+            _emailService = emailService;
+        }
+
+        public async Task<bool> SubmitContactRequest(ContactModel contactRequest)
         {
             if (RegexUtilities.IsValidEmail(contactRequest.Email))
             {
-                await EmailService.NotifySnover(contactRequest);
-                
-                return await JsnoRepo.SubmitContactRequest(ContactModel.MapToDto(contactRequest));
+                var saved = await JsnoRepo.SubmitContactRequest(ContactModel.MapToDto(contactRequest));
+                if (saved)
+                    await _emailService.NotifySnover(contactRequest);
+
+                return saved;
             }
             return false;
         }
