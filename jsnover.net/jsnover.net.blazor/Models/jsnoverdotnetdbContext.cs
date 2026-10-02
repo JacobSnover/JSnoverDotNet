@@ -34,6 +34,8 @@ namespace jsnover.net.blazor.Models
         public virtual DbSet<Tag> Tag { get; set; }
         public virtual DbSet<VisitorCounter> VisitorCounter { get; set; }
         public virtual DbSet<StandalonePhoto> StandalonePhoto { get; set; }
+        public virtual DbSet<FamilyPhotoDigestState> FamilyPhotoDigestState { get; set; }
+        public virtual DbSet<FamilyPhotoDigestDelivery> FamilyPhotoDigestDelivery { get; set; }
         public virtual DbSet<PhotoComment> PhotoComment { get; set; }
         public virtual DbSet<PhotoReaction> PhotoReaction { get; set; }
         public virtual DbSet<RateLimitLog> RateLimitLog { get; set; }
@@ -333,6 +335,27 @@ namespace jsnover.net.blazor.Models
 
                 entity.Property(e => e.IsPublished)
                     .HasDefaultValue(true);
+            });
+
+            modelBuilder.Entity<FamilyPhotoDigestState>(entity =>
+            {
+                entity.ToTable("FamilyPhotoDigestState");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.BaselineEstablishedAtUtc).HasColumnType("datetime2");
+                entity.Property(e => e.LeaseExpiresAtUtc).HasColumnType("datetime2");
+                entity.HasData(new FamilyPhotoDigestState
+                {
+                    Id = 1,
+                    BaselineEstablished = false
+                });
+            });
+
+            modelBuilder.Entity<FamilyPhotoDigestDelivery>(entity =>
+            {
+                entity.ToTable("FamilyPhotoDigestDelivery");
+                entity.HasKey(e => e.PhotoId);
+                entity.Property(e => e.PhotoId).ValueGeneratedNever();
+                entity.Property(e => e.DeliveredAtUtc).HasColumnType("datetime2");
             });
 
             modelBuilder.Entity<PhotoComment>(entity =>

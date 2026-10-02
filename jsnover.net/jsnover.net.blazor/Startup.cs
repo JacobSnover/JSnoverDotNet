@@ -46,7 +46,9 @@ namespace jsnover.net.blazor
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
             services.AddScoped<ToolService>();
             services.Configure<SmtpEmailOptions>(Configuration.GetSection(SmtpEmailOptions.SectionName));
+            services.Configure<FamilyPhotoDigestOptions>(Configuration.GetSection(FamilyPhotoDigestOptions.SectionName));
             services.AddScoped<IEmailSender, SmtpEmailSender>();
+            services.AddScoped<FamilyPhotoDigestService>();
             services.AddScoped<EmailService>();
             services.AddScoped<Submit>();
             services.AddSingleton<BlogListModel>();

@@ -263,6 +263,38 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("Blog");
                 });
 
+            modelBuilder.Entity("jsnover.net.blazor.Models.Chore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("LastCompleted")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("Status")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Worker")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Chore");
+                });
+
             modelBuilder.Entity("jsnover.net.blazor.Models.Commentors", b =>
                 {
                     b.Property<int>("Id")
@@ -345,6 +377,55 @@ namespace jsnover.net.blazor.Migrations
                     b.ToTable("ContactRequest");
                 });
 
+            modelBuilder.Entity("jsnover.net.blazor.Models.FamilyPhotoDigestDelivery", b =>
+                {
+                    b.Property<int>("PhotoId")
+                        .ValueGeneratedNever()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DeliveredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("WasBaseline")
+                        .HasColumnType("bit");
+
+                    b.HasKey("PhotoId");
+
+                    b.ToTable("FamilyPhotoDigestDelivery", (string)null);
+                });
+
+            modelBuilder.Entity("jsnover.net.blazor.Models.FamilyPhotoDigestState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("BaselineEstablished")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("BaselineEstablishedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LeaseExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("LeaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FamilyPhotoDigestState", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BaselineEstablished = false
+                        });
+                });
+
             modelBuilder.Entity("jsnover.net.blazor.Models.HealthEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -368,6 +449,9 @@ namespace jsnover.net.blazor.Migrations
 
                     b.Property<int>("Systolic")
                         .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -439,6 +523,9 @@ namespace jsnover.net.blazor.Migrations
                     b.Property<DateTime>("SubmitDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("VerificationCode")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -478,6 +565,9 @@ namespace jsnover.net.blazor.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ReactionId");
 
@@ -602,13 +692,25 @@ namespace jsnover.net.blazor.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AwaitingApproval")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("SubmittedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("SubscribeDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -817,14 +919,12 @@ namespace jsnover.net.blazor.Migrations
                     b.Navigation("Tag");
                 });
 
-
             modelBuilder.Entity("jsnover.net.blazor.Models.StandalonePhoto", b =>
                 {
                     b.Navigation("Comments");
 
                     b.Navigation("Reactions");
                 });
-
 #pragma warning restore 612, 618
         }
     }
