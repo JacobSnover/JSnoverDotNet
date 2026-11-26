@@ -24,24 +24,7 @@
             {
                 <PhotoGallery
                     Photos="galleryPhotos"
-                    CurrentPage="currentPage"
                     OnPhotoClicked="HandlePhotoClicked" />
-
-                <div class="pagination-controls">
-                    <button
-                        class="btn btn-outline-light"
-                        @onclick="PreviousPage"
-                        disabled="@(currentPage <= 1)">
-                        Previous
-                    </button>
-                    <span class="page-info">Page @currentPage</span>
-                    <button
-                        class="btn btn-outline-light"
-                        @onclick="NextPage"
-                        disabled="@(galleryPhotos.Count < pageSize)">
-                        Next
-                    </button>
-                </div>
             }
             else
             {
@@ -68,8 +51,6 @@
     private bool isLoadingGallery = true;
     private bool showPhotoDetail;
     private string currentFilter = "all";
-    private int currentPage = 1;
-    private const int pageSize = 20;
 
     protected override async Task OnInitializedAsync()
     {
@@ -96,7 +77,7 @@
         isLoadingGallery = true;
         try
         {
-            galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter, currentPage, pageSize);
+            galleryPhotos = await PhotoGalleryService.GetGalleryPhotos(currentFilter);
         }
         catch (Exception ex)
         {
@@ -121,18 +102,4 @@
         selectedPhoto = null;
     }
 
-    private async Task NextPage()
-    {
-        currentPage++;
-        await LoadGalleryPhotos();
-    }
-
-    private async Task PreviousPage()
-    {
-        if (currentPage > 1)
-        {
-            currentPage--;
-            await LoadGalleryPhotos();
-        }
-    }
 }

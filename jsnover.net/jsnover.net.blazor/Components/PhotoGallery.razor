@@ -8,8 +8,8 @@
             {
                 <div class="gallery-item" @onclick="@(() => OnPhotoClicked.InvokeAsync(photo))">
                     <div class="gallery-thumbnail-wrapper">
-                        <img 
-                            src="@photo.ThumbnailUrl" 
+                        <img
+                            src="@photo.ThumbnailUrl"
                             alt="@photo.Title"
                             loading="lazy"
                             class="gallery-thumbnail" />
@@ -35,9 +35,6 @@
 @code {
     [Parameter]
     public List<StandalonePhoto> Photos { get; set; } = new();
-
-    [Parameter]
-    public int CurrentPage { get; set; } = 1;
 
     [Parameter]
     public EventCallback<StandalonePhoto> OnPhotoClicked { get; set; }
